@@ -97,6 +97,14 @@ void MainWindow::setPersistenceEnabled(bool enabled) {
     persistenceEnabled_ = enabled;
 }
 
+void MainWindow::shutdownForSignal() {
+    if (persistenceEnabled_) {
+        saveTotals();
+        saveConfig();
+    }
+    QCoreApplication::quit();
+}
+
 void MainWindow::populateScreenshotDemoData() {
     disconnect(&collector_, nullptr, this, nullptr);
     totalsFlushTimer_.stop();
@@ -308,7 +316,19 @@ void MainWindow::applyPaneVisibility() {
 }
 
 void MainWindow::applyAlwaysOnTop() {
+    const bool wasVisible = isVisible();
+    if (wasVisible) {
+        hide();
+    }
     setWindowFlag(Qt::WindowStaysOnTopHint, config_.alwaysOnTop);
+    if (wasVisible) {
+        show();
+        raise();
+    }
+    configureLayerShell();
+}
+
+void MainWindow::configureLayerShell() {
 #ifdef NSL_HAS_LAYER_SHELL
     if (config_.alwaysOnTop && windowHandle() != nullptr) {
         if (auto* layerWindow = LayerShellQt::Window::get(windowHandle())) {
@@ -318,9 +338,6 @@ void MainWindow::applyAlwaysOnTop() {
         }
     }
 #endif
-    if (isVisible()) {
-        show();
-    }
 }
 
 void MainWindow::updateFromCollector(const CollectorSnapshot& snapshot) {
@@ -440,7 +457,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 
 void MainWindow::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
-    applyAlwaysOnTop();
+    configureLayerShell();
 }
 
 } // namespace nsl

@@ -4,8 +4,11 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QThread>
 
 #include <cstdint>
 #include <iostream>
@@ -84,6 +87,30 @@ int main(int argc, char** argv) {
     expectTrue(!shouldShowMainWindow(false, true), "Auto Minimize hides window");
     expectTrue(!singleInstanceServiceName().isEmpty(), "single-instance service name present");
     expectTrue(!singleInstanceObjectPath().isEmpty(), "single-instance object path present");
+
+    QTemporaryDir signalConfig;
+    const QString binaryPath = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("nsl-linux"));
+    expectTrue(QFile::exists(binaryPath), "nsl-linux binary exists beside lifecycle test");
+    QProcess process;
+    QProcessEnvironment processEnv = QProcessEnvironment::systemEnvironment();
+    processEnv.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
+    processEnv.insert(QStringLiteral("XDG_CONFIG_HOME"), signalConfig.path());
+    process.setProcessEnvironment(processEnv);
+    process.setProgram(binaryPath);
+    process.setArguments({QStringLiteral("--simulate"), QStringLiteral("--minimized")});
+    process.start();
+    expectTrue(process.waitForStarted(5000), "simulated app starts for SIGTERM persistence test");
+    if (process.state() != QProcess::NotRunning) {
+        QThread::sleep(4);
+        process.terminate();
+        expectTrue(process.waitForFinished(10000), "SIGTERM exits app cleanly");
+        const QString signalConfigPath = QDir(signalConfig.path()).filePath(QStringLiteral("nsl-linux/nsl-linux.conf"));
+        expectTrue(QFile::exists(signalConfigPath), "SIGTERM writes config before exit");
+        QSettings signalSettings(signalConfigPath, QSettings::IniFormat);
+        const qulonglong rx = signalSettings.value(QStringLiteral("totals/rxMonth")).toULongLong();
+        const qulonglong tx = signalSettings.value(QStringLiteral("totals/txMonth")).toULongLong();
+        expectTrue(rx > 0 || tx > 0, "SIGTERM saves non-zero simulated totals");
+    }
 
     if (failures != 0) {
         std::cerr << failures << " lifecycle test failure(s)\n";

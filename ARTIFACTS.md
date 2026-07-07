@@ -60,3 +60,8 @@ Package contents verified with `dpkg-deb --contents`:
 - `/usr/share/icons/hicolor/64x64/apps/nsl-linux.png`
 - `/usr/share/icons/hicolor/128x128/apps/nsl-linux.png`
 - `/usr/share/icons/hicolor/256x256/apps/nsl-linux.png`
+
+
+## QA reports
+
+- `docs/qa/final-qa-2026-07-07.md` — final real-traffic/performance, SIGTERM/SIGKILL, and Wayland limitation QA report.

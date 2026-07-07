@@ -42,3 +42,13 @@ Decisions:
 - Generate user autostart entries from the current executable path, quote paths with spaces, and include `X-KDE-autostart-after=panel` so the SNI host is available first.
 - Use DBus for single-instance activation (`org.nsl_linux.NSL`, `/org/nsl_linux/MainWindow`) rather than a local socket.
 - Package with CPack DEB, install a clean-room hicolor icon, and keep generated `.deb` files out of git while leaving them in `outputs/final/`.
+
+
+## 2026-07-07 — Final QA lifecycle hardening
+
+Source: final QA pass.
+Reason: SIGTERM did not save totals/config before process exit.
+
+Decision: bridge SIGTERM/SIGINT into the Qt event loop via a pipe and `QSocketNotifier`, then call `MainWindow::shutdownForSignal()` to flush totals/config before quitting. Hard crashes/SIGKILL remain bounded by the 60-second totals flush interval.
+
+Wayland decision: Always on Top reapplication uses a live hide/show cycle because Qt Wayland window flags and LayerShellQt surface state require window recreation. This can flicker briefly but avoids process restart.

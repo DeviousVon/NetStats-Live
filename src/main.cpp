@@ -7,7 +7,67 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QIcon>
+#include <QSocketNotifier>
 #include <QTimer>
+
+#include <csignal>
+#include <fcntl.h>
+#include <unistd.h>
+
+namespace {
+
+int signalPipeFds[2] = {-1, -1};
+
+void handleUnixSignal(int) {
+    const char byte = 'q';
+    if (signalPipeFds[1] != -1) {
+        const ssize_t ignored = ::write(signalPipeFds[1], &byte, sizeof(byte));
+        Q_UNUSED(ignored)
+    }
+}
+
+void makeCloseOnExec(int fd) {
+    const int flags = ::fcntl(fd, F_GETFD, 0);
+    if (flags != -1) {
+        ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    }
+}
+
+void makeNonBlocking(int fd) {
+    const int flags = ::fcntl(fd, F_GETFL, 0);
+    if (flags != -1) {
+        ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    }
+}
+
+bool installUnixSignalHandlers() {
+    if (signalPipeFds[0] != -1) {
+        return true;
+    }
+    if (::pipe(signalPipeFds) != 0) {
+        signalPipeFds[0] = -1;
+        signalPipeFds[1] = -1;
+        return false;
+    }
+    makeCloseOnExec(signalPipeFds[0]);
+    makeCloseOnExec(signalPipeFds[1]);
+    makeNonBlocking(signalPipeFds[0]);
+    makeNonBlocking(signalPipeFds[1]);
+
+    struct sigaction action;
+    action.sa_handler = handleUnixSignal;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = SA_RESTART;
+    return ::sigaction(SIGTERM, &action, nullptr) == 0 && ::sigaction(SIGINT, &action, nullptr) == 0;
+}
+
+void drainSignalPipe() {
+    char buffer[32];
+    while (::read(signalPipeFds[0], buffer, sizeof(buffer)) > 0) {
+    }
+}
+
+} // namespace
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
@@ -43,6 +103,15 @@ int main(int argc, char* argv[]) {
     }
 
     nsl::MainWindow window(parser.isSet(simulateOption));
+    QSocketNotifier* signalNotifier = nullptr;
+    if (!screenshotMode && installUnixSignalHandlers()) {
+        signalNotifier = new QSocketNotifier(signalPipeFds[0], QSocketNotifier::Read, &app);
+        QObject::connect(signalNotifier, &QSocketNotifier::activated, &window, [&window, signalNotifier]() {
+            signalNotifier->setEnabled(false);
+            drainSignalPipe();
+            window.shutdownForSignal();
+        });
+    }
     if (!screenshotMode && sessionBus.isConnected()) {
         sessionBus.registerObject(nsl::singleInstanceObjectPath(),
                                   nsl::singleInstanceInterfaceName(),

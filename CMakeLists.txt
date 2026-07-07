@@ -67,6 +67,7 @@ target_include_directories(nsl_lifecycle_tests PRIVATE src)
 target_link_libraries(nsl_lifecycle_tests PRIVATE Qt6::Core)
 target_compile_options(nsl_lifecycle_tests PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(nsl_lifecycle_tests PRIVATE QT_NO_KEYWORDS)
+add_dependencies(nsl_lifecycle_tests nsl-linux)
 
 enable_testing()
 add_test(NAME nsl_core_tests COMMAND nsl_core_tests)

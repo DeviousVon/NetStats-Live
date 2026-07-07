@@ -113,3 +113,24 @@ ctest --test-dir build --output-on-failure
 cpack --config build/CPackConfig.cmake -G DEB
 dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
 ```
+
+
+## Final QA pass notes
+
+Final QA found one defect: SIGTERM did not save totals/config. Fixed with a Unix signal pipe + `QSocketNotifier` in `main.cpp` and `MainWindow::shutdownForSignal()`. Added a lifecycle regression test that launches `build/nsl-linux --simulate --minimized`, sends SIGTERM, and verifies non-zero totals are written.
+
+Other QA evidence lives in `docs/qa/final-qa-2026-07-07.md`:
+
+- Wayland real-traffic soak stayed below 1% CPU and had 0 KiB RSS delta.
+- SIGKILL after 65 seconds retained flushed totals; hard crashes can lose at most the last 60 seconds.
+- Always on Top now re-applies via a live hide/show cycle; brief flicker is expected on Wayland.
+
+Resume verification:
+
+```bash
+cd /home/bob/projects/nsl-linux
+cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
+cpack --config build/CPackConfig.cmake -G DEB
+dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
+```
