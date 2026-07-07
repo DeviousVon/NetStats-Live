@@ -12,12 +12,13 @@
 #include <QPainter>
 #include <QWindow>
 
+#include <array>
 #include <cmath>
 
 namespace nsl {
 namespace {
 
-constexpr int WindowWidth = 170;
+constexpr int WindowWidth = 224;
 constexpr int TitleHeight = 18;
 
 std::size_t paneIndex(PaneId id) {
@@ -78,25 +79,88 @@ MainWindow::MainWindow(QWidget* parent)
 }
 
 MainWindow::~MainWindow() {
-    saveTotals();
-    saveConfig();
+    if (persistenceEnabled_) {
+        saveTotals();
+        saveConfig();
+    }
 }
 
 bool MainWindow::autoMinimizeEnabled() const {
     return config_.autoMinimize;
 }
 
+void MainWindow::setPersistenceEnabled(bool enabled) {
+    persistenceEnabled_ = enabled;
+}
+
+void MainWindow::populateScreenshotDemoData() {
+    disconnect(&collector_, nullptr, this, nullptr);
+    totalsFlushTimer_.stop();
+    config_.unitMode = UnitMode::Bytes;
+    config_.panes[paneIndex(PaneId::Threads)] = false;
+    incomingPane_->setUnitMode(config_.unitMode);
+    outgoingPane_->setUnitMode(config_.unitMode);
+
+    localPane_->setRows({{tr("Name"), tr("Local Machine")}, {tr("IP"), tr("x.x.x.x")}, {tr("Device"), tr("All TCP/IP Devices")}});
+    remotePane_->setRows({{tr("Name"), tr("Disabled")}, {tr("IP"), tr("--")}, {tr("Ping"), tr("--")}});
+    incomingTotalsPane_->setColumns({{tr("Last Reboot"), tr("3.9MB")}, {tr("This Month"), tr("3.9MB")}, {tr("Last Month"), tr("0B")}});
+    outgoingTotalsPane_->setColumns({{tr("Last Reboot"), tr("1.0MB")}, {tr("This Month"), tr("1.0MB")}, {tr("Last Month"), tr("0B")}});
+
+    incomingPane_->resetGraph();
+    outgoingPane_->resetGraph();
+    threadsPane_->resetGraph();
+    cpuPane_->resetGraph();
+
+    constexpr double kb = 1024.0;
+    const std::array<double, 60> incoming = {
+        0, 0, 0, 0, 12 * kb, 70 * kb, 18 * kb, 5 * kb, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 4 * kb, 10 * kb, 18 * kb, 40 * kb,
+        86 * kb, 132 * kb, 188 * kb, 236 * kb, 285.7 * kb, 168 * kb, 112 * kb, 145 * kb, 82 * kb, 110 * kb,
+        44 * kb, 16 * kb, 8 * kb, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    const std::array<double, 60> outgoing = {
+        0, 0, 0, 0, 7 * kb, 80 * kb, 20 * kb, 6 * kb, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 2 * kb, 5 * kb, 12 * kb, 21 * kb,
+        44 * kb, 62 * kb, 80 * kb, 72 * kb, 38 * kb, 12 * kb, 50 * kb, 70 * kb, 0, 0,
+        8 * kb, 1 * kb, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 63};
+    const std::array<double, 60> cpu = {
+        2, 8, 18, 6, 24, 8, 11, 7, 5, 4,
+        5, 4, 5, 4, 4, 4, 6, 3, 7, 4,
+        9, 3, 5, 4, 5, 4, 4, 6, 5, 8,
+        12, 16, 40, 28, 57, 54, 23, 39, 38, 17,
+        12, 12, 10, 10, 8, 7, 6, 6, 6, 10,
+        6, 4, 5, 6, 20, 43, 5, 16, 8, 2};
+
+    for (double value : incoming) {
+        incomingPane_->pushSample(value);
+    }
+    for (double value : outgoing) {
+        outgoingPane_->pushSample(value);
+    }
+    for (double value : cpu) {
+        cpuPane_->pushSample(value);
+    }
+    for (int i = 0; i < 60; ++i) {
+        threadsPane_->pushSample(1360 + ((i * 17) % 80));
+    }
+    applyPaneVisibility();
+    tray_.updateFromSnapshot(latestSnapshot_);
+}
+
 void MainWindow::createPanes() {
     layout_ = new QVBoxLayout(this);
-    layout_->setContentsMargins(0, TitleHeight, 0, 0);
+    layout_->setContentsMargins(1, TitleHeight, 1, 1);
     layout_->setSpacing(0);
     layout_->setSizeConstraint(QLayout::SetFixedSize);
 
-    localPane_ = new TextPane(QStringLiteral("Local"), 51, this);
-    remotePane_ = new TextPane(QStringLiteral("Remote"), 51, this);
-    incomingTotalsPane_ = new TextPane(QStringLiteral("Incoming Totals"), 39, this);
+    localPane_ = new TextPane(QStringLiteral("Local"), 66, this);
+    remotePane_ = new TextPane(QStringLiteral("Remote"), 66, this);
+    incomingTotalsPane_ = new TextPane(QStringLiteral("Incoming Totals"), 43, this);
     incomingPane_ = new GraphPane(QStringLiteral("Incoming"), GraphValueMode::NetworkRate, this);
-    outgoingTotalsPane_ = new TextPane(QStringLiteral("Outgoing Totals"), 39, this);
+    outgoingTotalsPane_ = new TextPane(QStringLiteral("Outgoing Totals"), 43, this);
     outgoingPane_ = new GraphPane(QStringLiteral("Outgoing"), GraphValueMode::NetworkRate, this);
     threadsPane_ = new GraphPane(QStringLiteral("Threads"), GraphValueMode::Count, this);
     cpuPane_ = new GraphPane(QStringLiteral("CPU"), GraphValueMode::Percent, this);
@@ -104,7 +168,7 @@ void MainWindow::createPanes() {
     for (QWidget* pane : {paneWidget(PaneId::LocalMachine), paneWidget(PaneId::RemoteMachine), paneWidget(PaneId::IncomingTotals),
                           paneWidget(PaneId::Incoming), paneWidget(PaneId::OutgoingTotals), paneWidget(PaneId::Outgoing),
                           paneWidget(PaneId::Threads), paneWidget(PaneId::Cpu)}) {
-        pane->setFixedWidth(WindowWidth);
+        pane->setFixedWidth(WindowWidth - 2);
         layout_->addWidget(pane);
     }
     incomingPane_->setUnitMode(config_.unitMode);
@@ -221,7 +285,7 @@ void MainWindow::rebuildMenus() {
 }
 
 void MainWindow::applyPaneVisibility() {
-    int height = TitleHeight;
+    int height = TitleHeight + 1;
     for (int i = 0; i < PaneCount; ++i) {
         const auto id = static_cast<PaneId>(i);
         QWidget* pane = paneWidget(id);
@@ -264,8 +328,8 @@ void MainWindow::updateFromCollector(const CollectorSnapshot& snapshot) {
 
     localPane_->setRows({{tr("Name"), snapshot.hostname}, {tr("IP"), snapshot.ipAddress}, {tr("Device"), snapshot.selectedInterface}});
     remotePane_->setRows({{tr("Name"), snapshot.remoteTarget}, {tr("Ping"), pingText(snapshot)}, {tr("Hops"), hopText(snapshot)}});
-    incomingTotalsPane_->setColumns({{tr("Session"), totalText(snapshot.rxSession)}, {tr("Month"), totalText(snapshot.rxMonth)}});
-    outgoingTotalsPane_->setColumns({{tr("Session"), totalText(snapshot.txSession)}, {tr("Month"), totalText(snapshot.txMonth)}});
+    incomingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(snapshot.rxSession)}, {tr("This Month"), totalText(snapshot.rxMonth)}, {tr("Last Month"), totalText(0)}});
+    outgoingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(snapshot.txSession)}, {tr("This Month"), totalText(snapshot.txMonth)}, {tr("Last Month"), totalText(0)}});
 
     incomingPane_->pushSample(snapshot.rxRate);
     outgoingPane_->pushSample(snapshot.txRate);
@@ -323,14 +387,18 @@ QWidget* MainWindow::paneWidget(PaneId id) const {
 void MainWindow::paintEvent(QPaintEvent* event) {
     Q_UNUSED(event)
     QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, false);
     painter.fillRect(rect(), PaneWidget::backgroundColor());
-    painter.setPen(QColor(0x00, 0x70, 0x60));
-    painter.drawRect(rect().adjusted(0, 0, -1, -1));
-    painter.setFont(PaneWidget::labelFont());
+    painter.fillRect(QRect(1, 1, width() - 2, TitleHeight - 1), PaneWidget::panelColor());
+    painter.setPen(QColor(0x24, 0x24, 0x24));
+    painter.drawLine(1, 1, width() - 2, 1);
+    painter.setFont(PaneWidget::headerFont());
     painter.setPen(PaneWidget::valueColor());
-    painter.drawText(QRect(0, 1, width(), TitleHeight - 2), Qt::AlignCenter, QStringLiteral("nsl-linux"));
-    painter.setPen(QColor(0x00, 0x35, 0x30));
-    painter.drawLine(0, TitleHeight - 1, width(), TitleHeight - 1);
+    painter.drawText(QRect(6, 0, width() - 12, TitleHeight), Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("nsl-linux"));
+    painter.setPen(QColor(0x00, 0x1b, 0x16));
+    painter.drawLine(1, TitleHeight - 1, width() - 2, TitleHeight - 1);
+    painter.setPen(PaneWidget::borderColor());
+    painter.drawRect(rect().adjusted(0, 0, -1, -1));
 }
 
 void MainWindow::mousePressEvent(QMouseEvent* event) {
@@ -350,8 +418,10 @@ void MainWindow::contextMenuEvent(QContextMenuEvent* event) {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    saveTotals();
-    saveConfig();
+    if (persistenceEnabled_) {
+        saveTotals();
+        saveConfig();
+    }
     QWidget::closeEvent(event);
 }
 

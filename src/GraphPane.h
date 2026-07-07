@@ -30,7 +30,7 @@ private:
     UnitMode unitMode_ = UnitMode::Bytes;
     std::vector<double> samples_;
     double maximumSeen_ = 0.0;
-    static constexpr std::size_t MaxSamples = 120;
+    static constexpr std::size_t MaxSamples = 60;
 };
 
 } // namespace nsl

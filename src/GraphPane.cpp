@@ -7,9 +7,16 @@
 #include <utility>
 
 namespace nsl {
+namespace {
+
+constexpr int LabelRowHeight = 9;
+constexpr int ValueRowHeight = 13;
+constexpr int ValueBlockHeight = LabelRowHeight + ValueRowHeight + 1;
+
+} // namespace
 
 GraphPane::GraphPane(QString title, GraphValueMode mode, QWidget* parent)
-    : PaneWidget(std::move(title), 70, parent), mode_(mode) {}
+    : PaneWidget(std::move(title), 84, parent), mode_(mode) {}
 
 void GraphPane::setUnitMode(UnitMode mode) {
     unitMode_ = mode;
@@ -57,55 +64,55 @@ void GraphPane::paintContent(QPainter& painter, const QRect& contentRect) {
     const double avg = average();
     const double max = maximumSeen_;
 
-    painter.setFont(labelFont());
-    painter.setPen(valueColor());
-    const int labelY = contentRect.top();
-    painter.drawText(QRect(contentRect.left(), labelY, 48, 10), Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("Current"));
-    painter.drawText(QRect(contentRect.center().x() - 28, labelY, 56, 10), Qt::AlignHCenter | Qt::AlignVCenter, QStringLiteral("Average"));
-    painter.drawText(QRect(contentRect.right() - 42, labelY, 42, 10), Qt::AlignRight | Qt::AlignVCenter, QStringLiteral("Max"));
+    const int colWidth = contentRect.width() / 3;
+    const int labelsY = contentRect.top();
+    const int valuesY = labelsY + LabelRowHeight;
+    const QString labels[3] = {QStringLiteral("Cur"), QStringLiteral("Avg"), QStringLiteral("Max")};
+    const QString values[3] = {formatValue(current), formatValue(avg), formatValue(max)};
 
-    painter.setFont(valueFont());
-    const int valueY = labelY + 10;
-    painter.drawText(QRect(contentRect.left(), valueY, 52, 13), Qt::AlignLeft | Qt::AlignVCenter, formatValue(current));
-    painter.drawText(QRect(contentRect.center().x() - 34, valueY, 68, 13), Qt::AlignHCenter | Qt::AlignVCenter, formatValue(avg));
-    painter.drawText(QRect(contentRect.right() - 52, valueY, 52, 13), Qt::AlignRight | Qt::AlignVCenter, formatValue(max));
+    for (int i = 0; i < 3; ++i) {
+        const int left = contentRect.left() + i * colWidth;
+        const int width = (i == 2) ? contentRect.right() - left + 1 : colWidth;
+        const QRect labelRect(left, labelsY, width, LabelRowHeight);
+        const QRect valueRect(left, valuesY, width, ValueRowHeight);
+        painter.setFont(labelFont());
+        painter.setPen(valueColor());
+        painter.drawText(labelRect.adjusted(0, 0, -1, 0), Qt::AlignRight | Qt::AlignVCenter, labels[i]);
+        painter.setFont(valueFont());
+        painter.drawText(valueRect.adjusted(0, -1, -1, 0), Qt::AlignRight | Qt::AlignVCenter, values[i]);
+    }
 
-    QRect graphRect(contentRect.left(), valueY + 15, contentRect.width(), contentRect.bottom() - valueY - 15);
+    QRect graphRect(contentRect.left(), contentRect.top() + ValueBlockHeight, contentRect.width(), contentRect.height() - ValueBlockHeight);
     graphRect = graphRect.adjusted(0, 0, 0, -1);
     painter.fillRect(graphRect, Qt::black);
-    painter.setPen(QColor(0x00, 0x28, 0x22));
+
+    painter.setPen(gridColor());
     for (int i = 1; i < 4; ++i) {
         const int y = graphRect.top() + (graphRect.height() * i) / 4;
         painter.drawLine(graphRect.left(), y, graphRect.right(), y);
     }
 
     const double scale = max > 0.0 ? max : 1.0;
-    QPolygonF poly;
-    poly.reserve(static_cast<int>(samples_.size()) + 2);
-    poly.append(QPointF(graphRect.left(), graphRect.bottom()));
-    if (!samples_.empty()) {
-        for (int x = 0; x < graphRect.width(); ++x) {
-            const double pos = static_cast<double>(x) / std::max(1, graphRect.width() - 1);
-            const auto index = static_cast<std::size_t>(std::min<double>(samples_.size() - 1, std::floor(pos * static_cast<double>(samples_.size()))));
-            const double sample = samples_[index];
-            const double normalized = std::clamp(sample / scale, 0.0, 1.0);
-            const double y = graphRect.bottom() - normalized * static_cast<double>(graphRect.height() - 1);
-            poly.append(QPointF(graphRect.left() + x, y));
-        }
+    painter.setPen(valueColor());
+    const int slots = static_cast<int>(MaxSamples);
+    const int startSlot = std::max(0, slots - static_cast<int>(samples_.size()));
+    for (std::size_t i = 0; i < samples_.size(); ++i) {
+        const int slot = startSlot + static_cast<int>(i);
+        const int x = graphRect.left() + (slot * std::max(1, graphRect.width() - 1)) / std::max(1, slots - 1);
+        const double normalized = std::clamp(samples_[i] / scale, 0.0, 1.0);
+        const int y = graphRect.bottom() - static_cast<int>(std::lround(normalized * static_cast<double>(std::max(1, graphRect.height() - 1))));
+        painter.drawLine(x, y, x, graphRect.bottom());
     }
-    poly.append(QPointF(graphRect.right(), graphRect.bottom()));
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(0x00, 0xe0, 0x00, 180));
-    painter.drawPolygon(poly);
 
     if (avg > 0.0) {
-        const double y = graphRect.bottom() - std::clamp(avg / scale, 0.0, 1.0) * static_cast<double>(graphRect.height() - 1);
-        painter.setPen(QColor(0x90, 0xff, 0x90));
-        painter.drawLine(graphRect.left(), static_cast<int>(std::lround(y)), graphRect.right(), static_cast<int>(std::lround(y)));
+        const double normalized = std::clamp(avg / scale, 0.0, 1.0);
+        const int y = graphRect.bottom() - static_cast<int>(std::lround(normalized * static_cast<double>(std::max(1, graphRect.height() - 1))));
+        painter.setPen(averageColor());
+        painter.drawLine(graphRect.left(), y, graphRect.right(), y);
     }
 
     painter.setPen(dimColor());
-    painter.drawRect(graphRect.adjusted(0, 0, -1, -1));
+    painter.drawLine(graphRect.left(), graphRect.bottom(), graphRect.right(), graphRect.bottom());
 }
 
 } // namespace nsl

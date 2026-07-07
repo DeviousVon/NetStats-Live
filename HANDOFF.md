@@ -58,3 +58,20 @@ Start the next session/prompt from this workspace and continue with the second c
 ```bash
 cd /home/bob/projects/nsl-linux && git status --short
 ```
+
+## Visual fidelity pass notes
+
+The app now supports deterministic screenshot rendering:
+
+```bash
+QT_QPA_PLATFORM=offscreen ./build/nsl-linux --screenshot outputs/reports/visual/nsl-linux.png
+```
+
+The screenshot mode seeds demo values, hides the Threads pane to match the AnalogX reference screenshot, prevents persistence writes, grabs the widget to PNG, and exits. The Threads pane remains implemented/toggleable in normal app use.
+
+Latest visual artifacts:
+
+- `outputs/reports/visual/nsl-visual-pass-final.png`
+- `outputs/reports/visual/nsl-visual-comparison-final.png`
+
+Implementation changed the main window width to match the 224px reference screenshot proportions rather than the earlier rough 170px estimate.

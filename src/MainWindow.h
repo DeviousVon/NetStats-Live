@@ -23,6 +23,8 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
     bool autoMinimizeEnabled() const;
+    void populateScreenshotDemoData();
+    void setPersistenceEnabled(bool enabled);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -72,6 +74,7 @@ private:
 
     CollectorSnapshot latestSnapshot_;
     QTimer totalsFlushTimer_;
+    bool persistenceEnabled_ = true;
 };
 
 } // namespace nsl
