@@ -1,46 +1,60 @@
-# Handoff
+# Handoff — NSL-Linux
 
-## Purpose
+## What this is
 
-_TBD from `PROJECT.md`._
+`nsl-linux` is a C++20 / Qt6 Widgets clone of AnalogX NetStat Live for Linux, focused on Kubuntu KDE Plasma on Wayland and portable Linux desktops.
 
-## Current Status
+## Current workspace
 
-_TBD from `STATUS.md`._
+```text
+/home/bob/projects/nsl-linux
+```
 
-## Key Decisions
+## Current build artifact
 
-_TBD from `DECISIONS.md`._
+```text
+/home/bob/projects/nsl-linux/build/nsl-linux
+```
 
-## Workspace Layout Notes
+## Build normally
 
-Use the standard Hermes Agent Framework project layout unless noted otherwise.
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake qt6-base-dev qmake6 qmake6-bin libqt6dbus6 libqt6network6 libqt6widgets6 liblayershellqtinterface-dev traceroute
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+ctest --test-dir build --output-on-failure
+```
 
-## Key Artifacts
+## Build in current session state
 
-_TBD from `ARTIFACTS.md`._
+Because sudo package install required interactive authentication, this session used ignored local extracted dev packages:
 
-## Setup / Dependency Notes
+```bash
+cmake -S . -B build -DCMAKE_PREFIX_PATH="$PWD/.deps/root/usr" -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
+```
 
-_TBD._
+## Verification already run
 
-## Verification / Restore Checks
+- CMake configure succeeded.
+- Build succeeded with `-Wall -Wextra -Wpedantic` and no compiler warnings in the final run.
+- CTest: `1/1 Test #1: nsl_core_tests ... Passed`.
+- `QT_QPA_PLATFORM=offscreen build/nsl-linux --help` exited 0.
+- 20s offscreen smoke/perf run: CPU rounded to 0%, RSS about 35 MB. The timeout exit was expected because the GUI event loop keeps running.
 
-_TBD._
+## Known caveats
 
-## Known Blockers
+- No real KDE Wayland visual screenshot pass was done yet; offscreen startup and link were verified.
+- `traceroute` was not installed system-wide; the app degrades to `n/a` when missing, as required. README lists it.
+- The current build binary has a RUNPATH into `.deps/root` because that is how this no-sudo build linked. A normal apt-installed build will link against system Qt paths.
+- Exact pixel fidelity will likely need one visual pass against `assets/reference/analogx-nsl.gif`.
 
-_TBD from `STATUS.md`._
+## Next likely action
 
-## Next Actions
+Start the next session/prompt from this workspace and continue with the second creation prompt. First recommended command:
 
-_TBD from `TASKS.md`._
-
-## Resume Instructions
-
-1. Read `PROJECT.md`.
-2. Read `STATUS.md`.
-3. Read `TASKS.md`.
-4. Read `DECISION_GATES.md`.
-5. Read `DECISIONS.md`.
-6. Continue the next unblocked task.
+```bash
+cd /home/bob/projects/nsl-linux && git status --short
+```
