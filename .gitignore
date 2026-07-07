@@ -4,3 +4,5 @@ build*/
 *.autosave
 .cache/
 compile_commands.json
+_CPack_Packages/
+*.deb

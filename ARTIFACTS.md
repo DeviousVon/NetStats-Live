@@ -12,6 +12,7 @@ Ignored by git:
 - `build/nsl-linux` — compiled application from verified local build.
 - `build/nsl_core_tests` — pure core test binary.
 - `build/nsl_tray_tests` — tray visual-state/simulation test binary.
+- `build/nsl_lifecycle_tests` — lifecycle/settings/package-support test binary.
 - `.deps/` — local extracted Debian dev packages used only because sudo package install was not available non-interactively.
 
 ## Important source files
@@ -28,9 +29,11 @@ Ignored by git:
 - `src/TraySimulation.*`
 - `src/ClipCap.*`
 - `src/Settings.*`
+- `src/Lifecycle.*`
 - `src/Core.*`
 - `tests/test_core.cpp`
 - `tests/test_tray_icon.cpp`
+- `tests/test_lifecycle.cpp`
 - `config/nsl-linux.desktop`
 
 ## Visual fidelity outputs
@@ -44,3 +47,16 @@ Ignored by git:
 - Hidden runtime mode: `./build/nsl-linux --simulate --minimized`.
 - Test target: `build/nsl_tray_tests` / CTest test `nsl_tray_tests`.
 - Live KDE Wayland check: StatusNotifierWatcher listed an item with `Id`/`Title` `nsl-linux`; DBus `org.kde.StatusNotifierItem.Activate 0 0` and `ContextMenu 0 0` both returned exit 0 while simulate mode was running.
+
+
+## Package outputs
+
+- `outputs/final/nsl-linux_0.1.0_amd64.deb` — generated CPack Debian package for Ubuntu 24.04+; ignored by git as a build artifact.
+
+Package contents verified with `dpkg-deb --contents`:
+
+- `/usr/bin/nsl-linux`
+- `/usr/share/applications/nsl-linux.desktop`
+- `/usr/share/icons/hicolor/64x64/apps/nsl-linux.png`
+- `/usr/share/icons/hicolor/128x128/apps/nsl-linux.png`
+- `/usr/share/icons/hicolor/256x256/apps/nsl-linux.png`

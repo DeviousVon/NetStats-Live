@@ -90,3 +90,26 @@ It feeds synthetic Collector snapshots in this sequence: rx-only burst, tx-only 
 Tray visual logic is factored into `TrayIconVisual.*`; simulation frames live in `TraySimulation.*`. CTest includes `nsl_tray_tests` for TX/RX half mapping, activity triangle thresholds, cache churn avoidance, 16px/22px legibility, and SNI activation reason mapping.
 
 Live KDE Wayland verification registered an `nsl-linux` StatusNotifierItem and DBus `Activate` / `ContextMenu` method calls returned success.
+
+
+## Lifecycle/package pass notes
+
+Lifecycle features implemented:
+
+- `NSL_FAKE_DATE` supports `YYYY-MM-DD` and `YYYY-MM` for month-rollover tests.
+- Monthly totals are archived to `history/<YYYY-MM>/rxMonth` and `history/<YYYY-MM>/txMonth`; active month totals reset on rollover.
+- Auto Start writes `~/.config/autostart/nsl-linux.desktop` with quoted current executable path, `--minimized`, `Icon=nsl-linux`, and `X-KDE-autostart-after=panel`.
+- Auto Minimize continues through startup decision helper `shouldShowMainWindow()`.
+- Single-instance guard uses DBus service `org.nsl_linux.NSL` and object `/org/nsl_linux/MainWindow`; second launch calls `activateFromInstanceRequest` and exits.
+- CPack generates `outputs/final/nsl-linux_0.1.0_amd64.deb`. The generated package is intentionally ignored by git.
+
+Recommended resume verification:
+
+```bash
+cd /home/bob/projects/nsl-linux
+cmake -S . -B build -DCMAKE_PREFIX_PATH="$PWD/.deps/root/usr" -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
+cpack --config build/CPackConfig.cmake -G DEB
+dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
+```
