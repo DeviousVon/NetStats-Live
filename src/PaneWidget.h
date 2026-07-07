@@ -16,10 +16,16 @@ public:
     void setPaneTitle(const QString& title);
 
     static QColor backgroundColor();
+    static QColor panelColor();
     static QColor valueColor();
+    static QColor averageColor();
+    static QColor gridColor();
     static QColor dimColor();
+    static QColor borderColor();
+    static QFont headerFont();
     static QFont labelFont();
     static QFont valueFont();
+    static int headerHeight();
 
 protected:
     void paintEvent(QPaintEvent* event) override;

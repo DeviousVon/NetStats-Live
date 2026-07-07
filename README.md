@@ -58,6 +58,14 @@ Start hidden in tray:
 ./build/nsl-linux --minimized
 ```
 
+Render a deterministic visual-fidelity screenshot for regression review:
+
+```bash
+QT_QPA_PLATFORM=offscreen ./build/nsl-linux --screenshot outputs/reports/visual/nsl-linux.png
+```
+
+The screenshot mode seeds stable demo values, hides persistence writes, grabs the widget with `QWidget::grab()`, saves a PNG, and exits.
+
 Install into a prefix:
 
 ```bash

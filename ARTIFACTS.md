@@ -28,3 +28,8 @@ Ignored by git:
 - `src/Core.*`
 - `tests/test_core.cpp`
 - `config/nsl-linux.desktop`
+
+## Visual fidelity outputs
+
+- `outputs/reports/visual/nsl-visual-pass-final.png` — generated `--screenshot` output after visual pass.
+- `outputs/reports/visual/nsl-visual-comparison-final.png` — side-by-side original vs generated comparison image.

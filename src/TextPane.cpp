@@ -28,24 +28,25 @@ void TextPane::paintContent(QPainter& painter, const QRect& contentRect) {
         const int count = columns_.size();
         const int colWidth = contentRect.width() / count;
         for (int i = 0; i < count; ++i) {
-            const QRect col(contentRect.left() + i * colWidth, contentRect.top(), colWidth, contentRect.height());
+            const int left = contentRect.left() + i * colWidth;
+            const int width = (i == count - 1) ? contentRect.right() - left + 1 : colWidth;
+            const QRect col(left, contentRect.top(), width, contentRect.height());
             painter.setFont(labelFont());
             painter.setPen(valueColor());
-            painter.drawText(col.adjusted(0, 0, 0, -14), Qt::AlignHCenter | Qt::AlignTop, columns_[i].first);
+            painter.drawText(col.adjusted(0, -1, -1, -12), Qt::AlignRight | Qt::AlignTop, columns_[i].first);
             painter.setFont(valueFont());
-            painter.drawText(col.adjusted(0, 12, 0, 0), Qt::AlignHCenter | Qt::AlignTop, columns_[i].second);
+            painter.drawText(col.adjusted(0, 10, -1, 0), Qt::AlignRight | Qt::AlignTop, columns_[i].second);
         }
         return;
     }
 
-    int y = contentRect.top() + 1;
+    int y = contentRect.top();
     for (const auto& row : rows_) {
         painter.setFont(labelFont());
         painter.setPen(valueColor());
-        painter.drawText(QRect(contentRect.left(), y, 50, 12), Qt::AlignLeft | Qt::AlignVCenter, row.first);
-        painter.setFont(labelFont());
-        painter.drawText(QRect(contentRect.left() + 55, y, contentRect.width() - 55, 12), Qt::AlignLeft | Qt::AlignVCenter, row.second);
-        y += 12;
+        painter.drawText(QRect(contentRect.left(), y, 43, 11), Qt::AlignLeft | Qt::AlignVCenter, row.first);
+        painter.drawText(QRect(contentRect.left() + 47, y, contentRect.width() - 47, 11), Qt::AlignLeft | Qt::AlignVCenter, row.second);
+        y += 11;
     }
 }
 

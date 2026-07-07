@@ -21,3 +21,10 @@
 - [ ] Exact AnalogX fidelity adjustments.
 - [ ] Broader automated tests.
 - [ ] Packaging/install refinements.
+
+## Completed in visual fidelity pass
+
+- [x] Add `--screenshot <path>` deterministic visual regression mode.
+- [x] Render PNG via `QWidget::grab()` under offscreen Qt.
+- [x] Compare generated screenshot side-by-side with original reference.
+- [x] Tighten pane headers, graph bars/grid/average line, value rows, margins, border, and font fallback.

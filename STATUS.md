@@ -32,3 +32,18 @@ Use Bob's second prompt in the next session to continue fidelity/polish/packagin
 2. Tighten exact pane heights/typography/colors if needed.
 3. Add more tests around settings/autostart and Collector parser edge cases.
 4. Decide packaging target if requested: local install, `.deb`, AppImage, or simple tarball.
+
+## 2026-07-06 visual fidelity pass
+
+Implemented second-prompt visual tightening:
+
+- Pane headers now use dark raised strips, left-aligned small-caps-style text, and a condensed font fallback chain.
+- Graphs now draw 60 one-pixel vertical bars, subtle 25/50/75% grid lines, and a 1px lighter average line.
+- Graph value blocks now use dense `Cur` / `Avg` / `Max` right-aligned columns.
+- The window is frameless, dark, marginless, and uses a 1px dark-gray outer border.
+- Added `--screenshot <path>` deterministic PNG mode using `QWidget::grab()` for visual regression checks.
+
+Rendered artifacts:
+
+- `outputs/reports/visual/nsl-visual-pass-final.png`
+- `outputs/reports/visual/nsl-visual-comparison-final.png`
