@@ -29,3 +29,16 @@ Reason: Bob requested iteration against the original AnalogX screenshot. `--scre
 
 Source: visual comparison against `assets/reference/analogx-nsl.gif`.
 Reason: the reference image is 224 px wide; the first 170 px estimate made the columns/spacing too cramped for faithful proportions.
+
+
+## 2026-07-07 — Lifecycle and packaging
+
+Source: Bob's fourth prompt.
+Reason: finish user-facing app lifecycle behavior and produce an installable Ubuntu package.
+
+Decisions:
+- Use `NSL_FAKE_DATE=YYYY-MM-DD` or `YYYY-MM` as a test-only date override for monthly total rollover.
+- Archive monthly totals under `history/<YYYY-MM>/rxMonth` and `history/<YYYY-MM>/txMonth` while resetting the active month bucket on rollover.
+- Generate user autostart entries from the current executable path, quote paths with spaces, and include `X-KDE-autostart-after=panel` so the SNI host is available first.
+- Use DBus for single-instance activation (`org.nsl_linux.NSL`, `/org/nsl_linux/MainWindow`) rather than a local socket.
+- Package with CPack DEB, install a clean-room hicolor icon, and keep generated `.deb` files out of git while leaving them in `outputs/final/`.

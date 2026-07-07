@@ -325,6 +325,9 @@ void MainWindow::applyAlwaysOnTop() {
 
 void MainWindow::updateFromCollector(const CollectorSnapshot& snapshot) {
     latestSnapshot_ = snapshot;
+    if (!config_.monthKey.isEmpty() && config_.monthKey != snapshot.monthKey) {
+        settings_.saveMonthlyTotals(config_.monthKey, config_.rxMonth, config_.txMonth);
+    }
     config_.rxMonth = snapshot.rxMonth;
     config_.txMonth = snapshot.txMonth;
     config_.monthKey = snapshot.monthKey;
@@ -358,6 +361,12 @@ void MainWindow::toggleVisibleFromTray() {
         raise();
         activateWindow();
     }
+}
+
+void MainWindow::activateFromInstanceRequest() {
+    show();
+    raise();
+    activateWindow();
 }
 
 void MainWindow::saveConfig() {

@@ -36,3 +36,15 @@
 - [x] Add pure tray visual-state renderer/cache.
 - [x] Add CTest tray coverage for TX/RX halves, 60s/120s triangle thresholds, cache churn, 16px/22px legibility, and activation mapping.
 - [x] Verify KDE Wayland StatusNotifierItem registration and DBus Activate/ContextMenu calls.
+
+
+## Completed in lifecycle/package pass
+
+- [x] Add `NSL_FAKE_DATE` test override.
+- [x] Archive old monthly totals to config history on rollover.
+- [x] Add lifecycle tests for fake date, rollover, autostart, auto-minimize, and single-instance constants.
+- [x] Add DBus single-instance guard and existing-window activation slot.
+- [x] Add clean-room hicolor icon assets.
+- [x] Add CPack DEB config with Qt runtime Depends and `traceroute` Recommends.
+- [x] Build package and verify with `dpkg --dry-run -i`.
+- [x] Update README with features, screenshots, KWin rule instructions, packaging, and AnalogX inspiration/clean-room note.

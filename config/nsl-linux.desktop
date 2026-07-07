@@ -2,9 +2,9 @@
 Type=Application
 Name=NSL-Linux
 GenericName=Network Monitor
-Comment=AnalogX NetStat Live style network monitor for Linux
+Comment=NetStat Live inspired network monitor for Linux
 Exec=nsl-linux
-Icon=network-workgroup
+Icon=nsl-linux
 Terminal=false
 Categories=Network;Monitor;Qt;
 StartupWMClass=nsl-linux

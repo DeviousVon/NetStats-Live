@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(nsl-linux VERSION 0.1.0 LANGUAGES CXX)
+project(nsl-linux VERSION 0.1.0 DESCRIPTION "NetStat Live inspired network monitor for Linux" LANGUAGES CXX)
 
 option(USE_LAYER_SHELL "Use layer-shell-qt for KDE Wayland always-on-top overlay support when available" ON)
 
@@ -13,6 +13,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets DBus Network)
 set(NSL_SOURCES
     src/main.cpp
     src/Core.cpp
+    src/Lifecycle.cpp
     src/Settings.cpp
     src/PaneWidget.cpp
     src/TextPane.cpp
@@ -57,11 +58,47 @@ target_link_libraries(nsl_tray_tests PRIVATE Qt6::Widgets)
 target_compile_options(nsl_tray_tests PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(nsl_tray_tests PRIVATE QT_NO_KEYWORDS)
 
+add_executable(nsl_lifecycle_tests
+    tests/test_lifecycle.cpp
+    src/Lifecycle.cpp
+    src/Settings.cpp
+)
+target_include_directories(nsl_lifecycle_tests PRIVATE src)
+target_link_libraries(nsl_lifecycle_tests PRIVATE Qt6::Core)
+target_compile_options(nsl_lifecycle_tests PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(nsl_lifecycle_tests PRIVATE QT_NO_KEYWORDS)
+
 enable_testing()
 add_test(NAME nsl_core_tests COMMAND nsl_core_tests)
 add_test(NAME nsl_tray_tests COMMAND nsl_tray_tests)
+add_test(NAME nsl_lifecycle_tests COMMAND nsl_lifecycle_tests)
 set_tests_properties(nsl_tray_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 include(GNUInstallDirs)
 install(TARGETS nsl-linux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES config/nsl-linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES assets/icons/hicolor/64x64/apps/nsl-linux.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/64x64/apps)
+install(FILES assets/icons/hicolor/128x128/apps/nsl-linux.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps)
+install(FILES assets/icons/hicolor/256x256/apps/nsl-linux.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_PACKAGE_NAME "nsl-linux")
+set(CPACK_PACKAGE_VENDOR "NSL-Linux")
+set(CPACK_PACKAGE_CONTACT "NSL-Linux maintainers")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "NetStat Live inspired network monitor for Linux")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://www.analogx.com/contents/download/Network/nsl/Freeware.htm")
+set(CPACK_DEBIAN_PACKAGE_SECTION "net")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/outputs/final")
+set(NSL_DEBIAN_DEPENDS "libc6 (>= 2.38), libstdc++6 (>= 13), libqt6core6t64 (>= 6.4) | libqt6core6 (>= 6.4), libqt6gui6 (>= 6.4), libqt6widgets6 (>= 6.4), libqt6dbus6 (>= 6.4), libqt6network6 (>= 6.4)")
+if(LayerShellQt_FOUND)
+    string(APPEND NSL_DEBIAN_DEPENDS ", liblayershellqtinterface6 (>= 6.4), libqt6waylandclient6 (>= 6.4)")
+endif()
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "${NSL_DEBIAN_DEPENDS}")
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "traceroute")
+set(CPACK_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+    GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE)
+include(CPack)

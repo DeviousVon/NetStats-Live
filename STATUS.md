@@ -57,3 +57,22 @@ Implemented third-prompt tray verification work:
 - Split tray visual-state logic into testable code: activity bucket, TX/RX state mapping, 16/22/32px icon rendering, and renderer cache.
 - Added `nsl_tray_tests` to CTest. It verifies left/right flash mapping, green/yellow/red silence thresholds, no regeneration for unchanged visual state, 16px/22px legibility, and StatusNotifierItem activation mapping.
 - Verified on the live KDE Wayland session that `nsl-linux --simulate --minimized` registers a StatusNotifierItem with `Id`/`Title` `nsl-linux`; DBus `Activate` and `ContextMenu` calls both returned exit 0.
+
+
+## 2026-07-07 lifecycle/package pass
+
+Implemented fourth-prompt lifecycle and packaging work:
+
+- `NSL_FAKE_DATE` controls `AppSettings::currentMonthKey()` for tests.
+- Monthly totals rollover archives old values under `history/<YYYY-MM>/rxMonth` and `history/<YYYY-MM>/txMonth` and resets the active month bucket.
+- Auto Start creates/removes `~/.config/autostart/nsl-linux.desktop`, quoting build-dir paths and adding `X-KDE-autostart-after=panel`.
+- Auto Minimize startup decision is factored/tested and still starts the app hidden with tray visible.
+- Single-instance DBus guard added; second launch calls `activateFromInstanceRequest` on the existing process and exits.
+- Added clean-room hicolor icons and CPack DEB packaging.
+- Package artifact: `outputs/final/nsl-linux_0.1.0_amd64.deb` (ignored generated artifact).
+
+Verification added/updated:
+
+- `nsl_lifecycle_tests` covers fake date, rollover history, autostart create/remove, auto-minimize decision, and single-instance constants.
+- Runtime single-instance smoke: first process stayed running; second launch exited 0.
+- Package checks: CPack generated a `.deb`, `dpkg-deb --info/--contents` verified metadata/installed files, `dpkg --dry-run -i` exited 0.

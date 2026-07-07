@@ -4,6 +4,7 @@
 #include <QDate>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QTextStream>
@@ -18,6 +19,29 @@ QString configDir() {
 
 QString boolKey(PaneId id) {
     return QStringLiteral("panes/%1").arg(paneConfigKey(id));
+}
+
+void archiveMonthlyTotals(QSettings& settings, const QString& monthKey, std::uint64_t rxBytes, std::uint64_t txBytes) {
+    if (monthKey.isEmpty()) {
+        return;
+    }
+    settings.setValue(QStringLiteral("history/%1/rxMonth").arg(monthKey), QVariant::fromValue<qulonglong>(rxBytes));
+    settings.setValue(QStringLiteral("history/%1/txMonth").arg(monthKey), QVariant::fromValue<qulonglong>(txBytes));
+}
+
+QString resolvedExecutablePath(const QString& executablePath) {
+    const QFileInfo info(executablePath);
+    if (info.isAbsolute()) {
+        return info.absoluteFilePath();
+    }
+    const QString found = QStandardPaths::findExecutable(executablePath);
+    return found.isEmpty() ? executablePath : found;
+}
+
+QString quoteExecToken(QString token) {
+    token.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    token.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    return QStringLiteral("\"%1\"").arg(token);
 }
 
 } // namespace
@@ -58,6 +82,19 @@ AppSettings::AppSettings()
 }
 
 QString AppSettings::currentMonthKey() {
+    const QString fakeDate = QString::fromLocal8Bit(qgetenv("NSL_FAKE_DATE")).trimmed();
+    if (!fakeDate.isEmpty()) {
+        if (fakeDate.size() == 7) {
+            const QDate month = QDate::fromString(fakeDate + QStringLiteral("-01"), QStringLiteral("yyyy-MM-dd"));
+            if (month.isValid()) {
+                return month.toString(QStringLiteral("yyyy-MM"));
+            }
+        }
+        const QDate date = QDate::fromString(fakeDate, QStringLiteral("yyyy-MM-dd"));
+        if (date.isValid()) {
+            return date.toString(QStringLiteral("yyyy-MM"));
+        }
+    }
     return QDate::currentDate().toString(QStringLiteral("yyyy-MM"));
 }
 
@@ -86,10 +123,18 @@ AppConfig AppSettings::load() const {
 
     const QString currentMonth = currentMonthKey();
     const QString storedMonth = settings.value(QStringLiteral("totals/monthKey"), currentMonth).toString();
+    const std::uint64_t storedRxMonth = settings.value(QStringLiteral("totals/rxMonth"), 0).toULongLong();
+    const std::uint64_t storedTxMonth = settings.value(QStringLiteral("totals/txMonth"), 0).toULongLong();
     config.monthKey = currentMonth;
     if (storedMonth == currentMonth) {
-        config.rxMonth = settings.value(QStringLiteral("totals/rxMonth"), 0).toULongLong();
-        config.txMonth = settings.value(QStringLiteral("totals/txMonth"), 0).toULongLong();
+        config.rxMonth = storedRxMonth;
+        config.txMonth = storedTxMonth;
+    } else {
+        archiveMonthlyTotals(settings, storedMonth, storedRxMonth, storedTxMonth);
+        settings.setValue(QStringLiteral("totals/monthKey"), currentMonth);
+        settings.setValue(QStringLiteral("totals/rxMonth"), QVariant::fromValue<qulonglong>(0));
+        settings.setValue(QStringLiteral("totals/txMonth"), QVariant::fromValue<qulonglong>(0));
+        settings.sync();
     }
     return config;
 }
@@ -116,6 +161,7 @@ void AppSettings::saveConfig(const AppConfig& config) const {
 
 void AppSettings::saveMonthlyTotals(const QString& monthKey, std::uint64_t rxBytes, std::uint64_t txBytes) const {
     QSettings settings(settingsPath_, QSettings::IniFormat);
+    archiveMonthlyTotals(settings, monthKey, rxBytes, txBytes);
     settings.setValue(QStringLiteral("totals/monthKey"), monthKey);
     settings.setValue(QStringLiteral("totals/rxMonth"), QVariant::fromValue<qulonglong>(rxBytes));
     settings.setValue(QStringLiteral("totals/txMonth"), QVariant::fromValue<qulonglong>(txBytes));
@@ -151,16 +197,18 @@ bool AppSettings::setAutoStart(bool enabled, const QString& executablePath) cons
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
+    const QString execPath = resolvedExecutablePath(executablePath);
     QTextStream stream(&file);
     stream << "[Desktop Entry]\n"
            << "Type=Application\n"
            << "Name=NSL-Linux\n"
            << "Comment=AnalogX NetStat Live style network monitor for Linux\n"
-           << "Exec=" << executablePath << " --minimized\n"
-           << "Icon=network-workgroup\n"
+           << "Exec=" << quoteExecToken(execPath) << " --minimized\n"
+           << "Icon=nsl-linux\n"
            << "Terminal=false\n"
            << "Categories=Network;Monitor;Qt;\n"
-           << "StartupWMClass=nsl-linux\n";
+           << "StartupWMClass=nsl-linux\n"
+           << "X-KDE-autostart-after=panel\n";
     return file.commit();
 }
 
