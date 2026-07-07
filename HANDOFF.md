@@ -138,3 +138,7 @@ dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
 ## AnalogX cyan visual rework handoff — 2026-07-07
 
 Current visual direction is the user's supplied AnalogX screenshot, not earlier bright-green/Cur-Avg-Max guidance. The app now uses `src/Theme.h` as the palette source of truth: cyan graph fill/header, brighter cyan values, olive labels, dark background/rules, and cyan tray active state. Graph panes use spelled Current/Average/Max labels, larger bold value text, and smoothed filled area graphs. Fresh artifacts are under `reports/visual/nsl-analogx-cyan-pass.png` and `reports/visual/nsl-analogx-cyan-comparison.png`.
+
+## Dynamic graph scaling handoff — 2026-07-07
+
+GraphPane now uses visible-window scaling: Count/Percent panes use padded 60-sample min/max; NetworkRate panes keep zero baseline but scale to the visible max. `maximumSeen_` remains only for the `Max` text. Scale easing is `0.20`, all-zero traffic returns `drawEmpty`, flat non-traffic values get a centered artificial range, newest edge bursts are preserved through smoothing, and `Theme::AverageLine` marks the visible-sample average. Runtime verification also fixed shutdown of live ping/traceroute QProcess children.

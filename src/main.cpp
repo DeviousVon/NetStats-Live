@@ -110,6 +110,7 @@ int main(int argc, char* argv[]) {
             signalNotifier->setEnabled(false);
             drainSignalPipe();
             window.shutdownForSignal();
+            QCoreApplication::quit();
         });
     }
     if (!screenshotMode && sessionBus.isConnected()) {

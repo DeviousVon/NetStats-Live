@@ -71,3 +71,7 @@ Package contents verified with `dpkg-deb --contents`:
 - `reports/visual/nsl-analogx-cyan-pass.png` — fresh `--screenshot` render after reworking palette, headers, labels, typography, width, and graph style.
 - `reports/visual/nsl-analogx-cyan-comparison.png` — crop of the supplied AnalogX reference next to the reworked render for visual comparison.
 - Mechanical screenshot marker counts from the render: cyan 3328, brighter value cyan 848, olive 81, legacy bright green 0.
+
+## 2026-07-07 dynamic graph scaling
+
+- `reports/visual/nsl-dynamic-scale-graphs.png` — offscreen-rendered contact sheet from the real GraphPane widget. Threads shows narrow 3077-3173 variation as hills/valleys, CPU uses the pane height for its current band, and Incoming shows a recent 64KB burst as a large peak while `Max` still reads 659KB from an evicted all-time spike.

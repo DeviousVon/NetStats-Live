@@ -78,6 +78,7 @@ private:
     void refreshLocalInfo();
     void maybeStartPing();
     void startTraceroute();
+    void stopProcess(QProcess& process);
     QString readTextFile(const QString& path) const;
     QString firstAddressForInterface(const QString& interfaceName) const;
     void rollMonthIfNeeded();

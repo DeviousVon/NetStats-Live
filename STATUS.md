@@ -97,3 +97,10 @@ Report: `docs/qa/final-qa-2026-07-07.md`.
 - Added `nsl_visual_theme_tests` to CTest. It verifies palette constants, PaneWidget color routing, spelled graph labels, no legacy bright-green graph pixels, and smoothing behavior.
 - Screenshot artifacts: `reports/visual/nsl-analogx-cyan-pass.png` and comparison crop `reports/visual/nsl-analogx-cyan-comparison.png`.
 - Also isolated the lifecycle SIGTERM smoke from any installed/running `nsl-linux` instance by forcing an invalid per-test DBus session address.
+
+## 2026-07-07 dynamic graph scaling
+
+- Graph panes now scale from the currently visible 60-sample window instead of all-time max. Threads/CPU use a padded windowed min/max baseline, so narrow bands like 3077-3173 render as visible hills/valleys instead of a flat block.
+- Incoming/Outgoing keep a zero baseline, but their top scale follows the visible-window max; the displayed `Max` text remains all-time max since reset.
+- Scale min/max ease 20% toward each target repaint to reduce snapping, all-zero traffic renders empty, flat non-traffic data is centered with an artificial range, and a dim average reference line is drawn across each active graph.
+- Verification found and fixed a real-traffic SIGTERM shutdown crash caused by live QProcess teardown; Collector now stops ping/traceroute processes before destruction and the signal path calls `QCoreApplication::quit()`.

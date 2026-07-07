@@ -12,8 +12,17 @@ namespace nsl {
 
 enum class GraphValueMode { NetworkRate, Percent, Count };
 
+struct GraphScaleRange {
+    double minimum = 0.0;
+    double maximum = 1.0;
+    bool drawEmpty = false;
+};
+
 std::array<QString, 3> graphMetricLabels();
 std::vector<double> smoothGraphSamples(const std::vector<double>& samples);
+GraphScaleRange targetGraphScaleRange(GraphValueMode mode, const std::vector<double>& samples);
+GraphScaleRange easeGraphScaleRange(const GraphScaleRange& current, const GraphScaleRange& target, bool initialized);
+double normalizeGraphSample(double sample, const GraphScaleRange& range);
 
 class GraphPane : public PaneWidget {
     Q_OBJECT
@@ -36,6 +45,8 @@ private:
     UnitMode unitMode_ = UnitMode::Bytes;
     std::vector<double> samples_;
     double maximumSeen_ = 0.0;
+    GraphScaleRange scaleRange_;
+    bool scaleInitialized_ = false;
     static constexpr std::size_t MaxSamples = MaxSamplesForRendering;
 };
 

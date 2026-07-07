@@ -15,6 +15,7 @@ struct Theme {
     inline static const QColor LabelText{0xa8, 0xa0, 0x78};
     inline static const QColor RuleLine{0x00, 0x70, 0x70};
     inline static const QColor DimRuleLine{0x00, 0x32, 0x32};
+    inline static const QColor AverageLine{0x00, 0x48, 0x48};
     inline static const QColor Border{0x30, 0x30, 0x30};
     inline static const QColor TrayInactive{0x1c, 0x1c, 0x1c};
     inline static const QColor TrayWarning{0xff, 0xd0, 0x00};

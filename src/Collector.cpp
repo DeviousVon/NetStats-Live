@@ -55,8 +55,10 @@ Collector::Collector(QObject* parent)
 Collector::~Collector() {
     tickTimer_.stop();
     simulationTimer_.stop();
-    pingProcess_.kill();
-    tracerouteProcess_.kill();
+    disconnect(&pingProcess_, nullptr, this, nullptr);
+    disconnect(&tracerouteProcess_, nullptr, this, nullptr);
+    stopProcess(pingProcess_);
+    stopProcess(tracerouteProcess_);
 }
 
 void Collector::start(const QString& selectedInterface,
@@ -102,8 +104,8 @@ void Collector::setRemoteTarget(const QString& target) {
     snapshot_.hopCount = 0;
     pingSamples_.clear();
     pingElapsed_.invalidate();
-    pingProcess_.kill();
-    tracerouteProcess_.kill();
+    stopProcess(pingProcess_);
+    stopProcess(tracerouteProcess_);
     startTraceroute();
     maybeStartPing();
     Q_EMIT updated(snapshot_);
@@ -118,8 +120,8 @@ void Collector::resetSessionTotals() {
 
 void Collector::startSimulation(const QString& monthKey, std::uint64_t rxMonth, std::uint64_t txMonth) {
     tickTimer_.stop();
-    pingProcess_.kill();
-    tracerouteProcess_.kill();
+    stopProcess(pingProcess_);
+    stopProcess(tracerouteProcess_);
     previousCounters_.reset();
     previousCpu_.reset();
     pingSamples_.clear();
@@ -252,6 +254,17 @@ void Collector::startTraceroute() {
         return;
     }
     tracerouteProcess_.start(traceroute, {QStringLiteral("-n"), QStringLiteral("-m"), QStringLiteral("30"), QStringLiteral("-q"), QStringLiteral("1"), snapshot_.remoteTarget});
+}
+
+void Collector::stopProcess(QProcess& process) {
+    if (process.state() == QProcess::NotRunning) {
+        return;
+    }
+    process.terminate();
+    if (!process.waitForFinished(1000)) {
+        process.kill();
+        process.waitForFinished(1000);
+    }
 }
 
 void Collector::pingFinished(int exitCode, QProcess::ExitStatus status) {
