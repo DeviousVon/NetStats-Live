@@ -58,3 +58,12 @@
 - [x] Tighten Always on Top reapplication with a live hide/show cycle for Wayland/layer-shell state.
 - [x] Document Wayland limitations vs the original Windows app.
 - [x] Add final QA report under `docs/qa/final-qa-2026-07-07.md`.
+
+## 2026-07-07 AnalogX cyan visual rework
+
+- [x] Replace legacy green palette with named centralized `Theme` cyan/teal + olive palette.
+- [x] Rework pane headers to centered cyan text with side rules.
+- [x] Spell graph labels as Current/Average/Max and enlarge graph values.
+- [x] Replace vertical bar graphs/grid lines with smoothed filled cyan area graphs.
+- [x] Apply the same palette/typography to Threads/CPU/network graph panes.
+- [x] Render and compare screenshot artifacts against the supplied AnalogX reference.

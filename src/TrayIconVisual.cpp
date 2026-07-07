@@ -1,5 +1,7 @@
 #include "TrayIconVisual.h"
 
+#include "Theme.h"
+
 #include <QPainter>
 #include <QPixmap>
 #include <QPolygonF>
@@ -25,13 +27,13 @@ TrayVisualState makeTrayVisualState(std::uint64_t txDelta, std::uint64_t rxDelta
 QColor trayActivityColor(TrayActivityBucket bucket) {
     switch (bucket) {
     case TrayActivityBucket::Green:
-        return QColor(0x00, 0xd8, 0x00);
+        return Theme::GraphFill;
     case TrayActivityBucket::Yellow:
-        return QColor(0xff, 0xd0, 0x00);
+        return Theme::TrayWarning;
     case TrayActivityBucket::Red:
-        return QColor(0xdf, 0x20, 0x20);
+        return Theme::TrayAlert;
     }
-    return QColor(0xdf, 0x20, 0x20);
+    return Theme::TrayAlert;
 }
 
 QImage renderTrayIconImage(const TrayVisualState& state, QSize size) {
@@ -44,9 +46,9 @@ QImage renderTrayIconImage(const TrayVisualState& state, QSize size) {
     painter.scale(static_cast<double>(edge) / 32.0, static_cast<double>(edge) / 32.0);
 
     const QRectF body(4, 3, 24, 22);
-    const QColor dark(20, 20, 20);
-    const QColor inactive(28, 28, 28);
-    const QColor border(0x00, 0xe0, 0x00);
+    const QColor dark = Theme::PanelBackground;
+    const QColor inactive = Theme::TrayInactive;
+    const QColor border = Theme::GraphFill;
 
     painter.setPen(QPen(border, 1.25));
     painter.setBrush(dark);

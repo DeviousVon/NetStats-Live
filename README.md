@@ -11,7 +11,7 @@ This is a clean-room reimplementation. AnalogX NetStat Live is credited as the i
 - Panes for Local Machine, Remote Machine, Incoming/Outgoing Totals, Incoming/Outgoing graphs, Threads, and CPU.
 - `/proc/net/dev`, `/proc/stat`, and `/proc/loadavg` collection on a 500 ms timer.
 - Async `ping -c 1` rolling average and async `traceroute -n -m 30 -q 1` hop count.
-- Runtime-painted StatusNotifierItem/QSystemTrayIcon with cached TX/RX flash states and green/yellow/red activity-age triangle.
+- Runtime-painted StatusNotifierItem/QSystemTrayIcon with cached TX/RX flash states and cyan/yellow/red activity-age triangle.
 - Right-click context menu with pane toggles, config toggles, interface radio menu, reset, minimize, exit.
 - URL ClipCap via `QClipboard::dataChanged` plus KDE Klipper DBus polling fallback.
 - QSettings INI persistence at `~/.config/nsl-linux/nsl-linux.conf`.

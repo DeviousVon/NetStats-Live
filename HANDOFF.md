@@ -85,7 +85,7 @@ The app now has a hidden deterministic tray demo mode:
 ./build/nsl-linux --simulate --minimized
 ```
 
-It feeds synthetic Collector snapshots in this sequence: rx-only burst, tx-only burst, bidirectional burst, green silence just under 60s, yellow at 60s, and red at 120s. `--simulate` is hidden from `--help`.
+It feeds synthetic Collector snapshots in this sequence: rx-only burst, tx-only burst, bidirectional burst, cyan active silence just under 60s, yellow at 60s, and red at 120s. `--simulate` is hidden from `--help`.
 
 Tray visual logic is factored into `TrayIconVisual.*`; simulation frames live in `TraySimulation.*`. CTest includes `nsl_tray_tests` for TX/RX half mapping, activity triangle thresholds, cache churn avoidance, 16px/22px legibility, and SNI activation reason mapping.
 
@@ -134,3 +134,7 @@ ctest --test-dir build --output-on-failure
 cpack --config build/CPackConfig.cmake -G DEB
 dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
 ```
+
+## AnalogX cyan visual rework handoff — 2026-07-07
+
+Current visual direction is the user's supplied AnalogX screenshot, not earlier bright-green/Cur-Avg-Max guidance. The app now uses `src/Theme.h` as the palette source of truth: cyan graph fill/header, brighter cyan values, olive labels, dark background/rules, and cyan tray active state. Graph panes use spelled Current/Average/Max labels, larger bold value text, and smoothed filled area graphs. Fresh artifacts are under `reports/visual/nsl-analogx-cyan-pass.png` and `reports/visual/nsl-analogx-cyan-comparison.png`.
