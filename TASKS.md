@@ -67,3 +67,10 @@
 - [x] Replace vertical bar graphs/grid lines with smoothed filled cyan area graphs.
 - [x] Apply the same palette/typography to Threads/CPU/network graph panes.
 - [x] Render and compare screenshot artifacts against the supplied AnalogX reference.
+
+## 2026-07-07 dynamic graph scaling
+
+- [x] Add tests for windowed dynamic range, traffic zero baseline, all-zero traffic empty rendering, flat-data centering, scale easing, and edge burst preservation.
+- [x] Implement visible-window graph scaling with per-mode baseline behavior and a dim average reference line.
+- [x] Generate dynamic-scale visual report showing Threads, CPU, and Incoming burst behavior.
+- [x] Run simulate and real-traffic smoke checks; fix live shutdown crash discovered during real-traffic verification.

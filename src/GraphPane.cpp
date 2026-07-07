@@ -25,7 +25,7 @@ Qt::Alignment columnAlignment(int index) {
     }
 }
 
-QPainterPath filledAreaPath(const std::vector<double>& samples, const QRect& graphRect, double scale) {
+QPainterPath filledAreaPath(const std::vector<double>& samples, const QRect& graphRect, const GraphScaleRange& scaleRange) {
     const int slots = static_cast<int>(GraphPane::MaxSamplesForRendering);
     const int startSlot = std::max(0, slots - static_cast<int>(samples.size()));
     const int usableWidth = std::max(1, graphRect.width() - 1);
@@ -33,14 +33,14 @@ QPainterPath filledAreaPath(const std::vector<double>& samples, const QRect& gra
     const auto smoothed = smoothGraphSamples(samples);
 
     QPainterPath path;
-    if (smoothed.empty()) {
+    if (smoothed.empty() || scaleRange.drawEmpty) {
         return path;
     }
 
     auto pointFor = [&](std::size_t i) {
         const int slot = startSlot + static_cast<int>(i);
         const qreal x = static_cast<qreal>(graphRect.left()) + (static_cast<qreal>(slot) * usableWidth) / std::max(1, slots - 1);
-        const double normalized = std::clamp(smoothed[i] / scale, 0.0, 1.0);
+        const double normalized = normalizeGraphSample(smoothed[i], scaleRange);
         const qreal y = static_cast<qreal>(graphRect.bottom()) - static_cast<qreal>(normalized * usableHeight);
         return QPointF(x, y);
     };
@@ -73,9 +73,11 @@ std::vector<double> smoothGraphSamples(const std::vector<double>& samples) {
         return samples;
     }
     std::vector<double> smoothed(samples.size(), 0.0);
-    for (std::size_t i = 0; i < samples.size(); ++i) {
-        const std::size_t begin = i == 0 ? 0 : i - 1;
-        const std::size_t end = std::min(samples.size() - 1, i + 1);
+    smoothed.front() = samples.front();
+    smoothed.back() = samples.back();
+    for (std::size_t i = 1; i + 1 < samples.size(); ++i) {
+        const std::size_t begin = i - 1;
+        const std::size_t end = i + 1;
         double total = 0.0;
         for (std::size_t j = begin; j <= end; ++j) {
             total += samples[j];
@@ -83,6 +85,51 @@ std::vector<double> smoothGraphSamples(const std::vector<double>& samples) {
         smoothed[i] = total / static_cast<double>(end - begin + 1);
     }
     return smoothed;
+}
+
+GraphScaleRange targetGraphScaleRange(GraphValueMode mode, const std::vector<double>& samples) {
+    if (samples.empty()) {
+        return {};
+    }
+
+    const auto [minIt, maxIt] = std::minmax_element(samples.begin(), samples.end());
+    const double visibleMin = *minIt;
+    const double visibleMax = *maxIt;
+
+    if (mode == GraphValueMode::NetworkRate) {
+        if (visibleMax <= 0.0) {
+            return {0.0, 1.0, true};
+        }
+        return {0.0, std::max(1.0, visibleMax * 1.10), false};
+    }
+
+    const double center = (visibleMin + visibleMax) / 2.0;
+    const double visibleRange = visibleMax - visibleMin;
+    const double range = visibleRange > 0.0 ? visibleRange : std::max(1.0, std::abs(center) * 0.10);
+    const double padding = range * 0.10;
+    if (visibleRange <= 0.0) {
+        return {center - range / 2.0, center + range / 2.0, false};
+    }
+    return {visibleMin - padding, visibleMax + padding, false};
+}
+
+GraphScaleRange easeGraphScaleRange(const GraphScaleRange& current, const GraphScaleRange& target, bool initialized) {
+    if (!initialized || target.drawEmpty) {
+        return target;
+    }
+
+    constexpr double Ease = 0.20;
+    return {current.minimum * (1.0 - Ease) + target.minimum * Ease,
+            current.maximum * (1.0 - Ease) + target.maximum * Ease,
+            target.drawEmpty};
+}
+
+double normalizeGraphSample(double sample, const GraphScaleRange& range) {
+    const double span = range.maximum - range.minimum;
+    if (span <= 0.0) {
+        return 0.5;
+    }
+    return std::clamp((sample - range.minimum) / span, 0.0, 1.0);
 }
 
 GraphPane::GraphPane(QString title, GraphValueMode mode, QWidget* parent)
@@ -106,6 +153,8 @@ void GraphPane::pushSample(double value) {
 void GraphPane::resetGraph() {
     samples_.clear();
     maximumSeen_ = 0.0;
+    scaleRange_ = {};
+    scaleInitialized_ = false;
     update();
 }
 
@@ -158,16 +207,29 @@ void GraphPane::paintContent(QPainter& painter, const QRect& contentRect) {
     graphRect = graphRect.adjusted(0, 1, 0, -1);
     painter.fillRect(graphRect, Theme::Background);
 
-    const double scale = max > 0.0 ? max : 1.0;
-    if (!samples_.empty()) {
+    if (samples_.empty()) {
+        scaleRange_ = {};
+        scaleInitialized_ = false;
+    } else {
+        scaleRange_ = easeGraphScaleRange(scaleRange_, targetGraphScaleRange(mode_, samples_), scaleInitialized_);
+        scaleInitialized_ = true;
+    }
+    if (!samples_.empty() && !scaleRange_.drawEmpty) {
         painter.setRenderHint(QPainter::Antialiasing, true);
-        const QPainterPath area = filledAreaPath(samples_, graphRect, scale);
+        const QPainterPath area = filledAreaPath(samples_, graphRect, scaleRange_);
         painter.fillPath(area, Theme::GraphFill);
         painter.setPen(QPen(Theme::GraphFill, 1.0));
         painter.drawPath(area);
+
+        const int usableHeight = std::max(1, graphRect.height() - 1);
+        const double averagePosition = normalizeGraphSample(avg, scaleRange_);
+        const int averageY = graphRect.bottom() - static_cast<int>(std::lround(averagePosition * usableHeight));
         painter.setRenderHint(QPainter::Antialiasing, false);
+        painter.setPen(QPen(Theme::AverageLine, 1));
+        painter.drawLine(graphRect.left(), averageY, graphRect.right(), averageY);
     }
 
+    painter.setRenderHint(QPainter::Antialiasing, false);
     painter.setPen(Theme::RuleLine);
     painter.drawLine(graphRect.left(), graphRect.bottom(), graphRect.right(), graphRect.bottom());
 }
