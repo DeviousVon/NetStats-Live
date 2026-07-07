@@ -19,11 +19,14 @@ int main(int argc, char* argv[]) {
     const QCommandLineOption screenshotOption(QStringLiteral("screenshot"),
                                               QStringLiteral("Render a deterministic visual-fidelity PNG and exit"),
                                               QStringLiteral("path"));
+    QCommandLineOption simulateOption(QStringLiteral("simulate"), QStringLiteral("Run deterministic synthetic tray traffic"));
+    simulateOption.setFlags(QCommandLineOption::HiddenFromHelp);
     parser.addOption(minimizedOption);
     parser.addOption(screenshotOption);
+    parser.addOption(simulateOption);
     parser.process(app);
 
-    nsl::MainWindow window;
+    nsl::MainWindow window(parser.isSet(simulateOption));
     if (parser.isSet(screenshotOption)) {
         const QString outputPath = parser.value(screenshotOption);
         window.setPersistenceEnabled(false);

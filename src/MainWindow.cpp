@@ -38,7 +38,7 @@ QString hopText(const CollectorSnapshot& snapshot) {
 
 } // namespace
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(bool simulate, QWidget* parent)
     : QWidget(parent), contextMenu_(this), statisticsMenu_(tr("Statistics"), this), configMenu_(tr("Config"), this), interfaceMenu_(tr("Interface"), this), unitGroup_(this), interfaceGroup_(this) {
     setObjectName(QStringLiteral("nsl-linux"));
     setWindowTitle(QStringLiteral("nsl-linux"));
@@ -70,8 +70,12 @@ MainWindow::MainWindow(QWidget* parent)
     connect(&totalsFlushTimer_, &QTimer::timeout, this, &MainWindow::saveTotals);
     totalsFlushTimer_.start();
 
-    clipCap_.setEnabled(config_.urlClipCap);
-    collector_.start(config_.selectedInterface, config_.remoteTarget, config_.monthKey, config_.rxMonth, config_.txMonth);
+    clipCap_.setEnabled(config_.urlClipCap && !simulate);
+    if (simulate) {
+        collector_.startSimulation(config_.monthKey, config_.rxMonth, config_.txMonth);
+    } else {
+        collector_.start(config_.selectedInterface, config_.remoteTarget, config_.monthKey, config_.rxMonth, config_.txMonth);
+    }
 
     if (!config_.windowPos.isNull()) {
         move(config_.windowPos);

@@ -1,5 +1,6 @@
 #include "Collector.h"
 #include "Settings.h"
+#include "TraySimulation.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -44,12 +45,16 @@ QString cleanTarget(QString target) {
 Collector::Collector(QObject* parent)
     : QObject(parent) {
     tickTimer_.setInterval(500);
+    simulationTimer_.setInterval(500);
     connect(&tickTimer_, &QTimer::timeout, this, &Collector::tick);
+    connect(&simulationTimer_, &QTimer::timeout, this, &Collector::simulationTick);
     connect(&pingProcess_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, &Collector::pingFinished);
     connect(&tracerouteProcess_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, &Collector::tracerouteFinished);
 }
 
 Collector::~Collector() {
+    tickTimer_.stop();
+    simulationTimer_.stop();
     pingProcess_.kill();
     tracerouteProcess_.kill();
 }
@@ -59,6 +64,7 @@ void Collector::start(const QString& selectedInterface,
                       const QString& monthKey,
                       std::uint64_t rxMonth,
                       std::uint64_t txMonth) {
+    simulationTimer_.stop();
     snapshot_.selectedInterface = selectedInterface.isEmpty() ? QStringLiteral("ALL") : selectedInterface;
     snapshot_.monthKey = monthKey.isEmpty() ? AppSettings::currentMonthKey() : monthKey;
     snapshot_.rxMonth = rxMonth;
@@ -110,6 +116,23 @@ void Collector::resetSessionTotals() {
     Q_EMIT updated(snapshot_);
 }
 
+void Collector::startSimulation(const QString& monthKey, std::uint64_t rxMonth, std::uint64_t txMonth) {
+    tickTimer_.stop();
+    pingProcess_.kill();
+    tracerouteProcess_.kill();
+    previousCounters_.reset();
+    previousCpu_.reset();
+    pingSamples_.clear();
+    hasActivity_ = true;
+    snapshot_ = CollectorSnapshot{};
+    snapshot_.monthKey = monthKey.isEmpty() ? AppSettings::currentMonthKey() : monthKey;
+    snapshot_.rxMonth = rxMonth;
+    snapshot_.txMonth = txMonth;
+    simulationFrameIndex_ = 0;
+    simulationTick();
+    simulationTimer_.start();
+}
+
 CollectorSnapshot Collector::snapshot() const {
     return snapshot_;
 }
@@ -127,6 +150,16 @@ void Collector::tick() {
     refreshThreads();
     refreshLocalInfo();
     maybeStartPing();
+    Q_EMIT updated(snapshot_);
+}
+
+void Collector::simulationTick() {
+    const auto frames = buildTraySimulationFrames();
+    if (frames.empty()) {
+        return;
+    }
+    applyTraySimulationFrame(snapshot_, frames.at(static_cast<std::size_t>(simulationFrameIndex_) % frames.size()));
+    simulationFrameIndex_ = (simulationFrameIndex_ + 1) % static_cast<int>(frames.size());
     Q_EMIT updated(snapshot_);
 }
 

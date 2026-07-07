@@ -56,6 +56,7 @@ public:
     void setSelectedInterface(const QString& selectedInterface);
     void setRemoteTarget(const QString& target);
     void resetSessionTotals();
+    void startSimulation(const QString& monthKey = {}, std::uint64_t rxMonth = 0, std::uint64_t txMonth = 0);
 
     CollectorSnapshot snapshot() const;
     QString defaultGateway() const;
@@ -66,6 +67,7 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void tick();
+    void simulationTick();
     void pingFinished(int exitCode, QProcess::ExitStatus status);
     void tracerouteFinished(int exitCode, QProcess::ExitStatus status);
 
@@ -81,6 +83,7 @@ private:
     void rollMonthIfNeeded();
 
     QTimer tickTimer_;
+    QTimer simulationTimer_;
     QElapsedTimer elapsed_;
     CollectorSnapshot snapshot_;
     std::optional<NetworkCounters> previousCounters_;
@@ -91,6 +94,7 @@ private:
     std::deque<double> pingSamples_;
     QElapsedTimer activityElapsed_;
     bool hasActivity_ = false;
+    int simulationFrameIndex_ = 0;
 };
 
 } // namespace nsl
