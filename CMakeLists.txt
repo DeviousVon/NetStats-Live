@@ -18,6 +18,8 @@ set(NSL_SOURCES
     src/TextPane.cpp
     src/GraphPane.cpp
     src/Collector.cpp
+    src/TrayIconVisual.cpp
+    src/TraySimulation.cpp
     src/TrayIcon.cpp
     src/ClipCap.cpp
     src/MainWindow.cpp
@@ -44,8 +46,21 @@ add_executable(nsl_core_tests tests/test_core.cpp src/Core.cpp)
 target_include_directories(nsl_core_tests PRIVATE src)
 target_compile_options(nsl_core_tests PRIVATE -Wall -Wextra -Wpedantic)
 
+add_executable(nsl_tray_tests
+    tests/test_tray_icon.cpp
+    src/Core.cpp
+    src/TrayIconVisual.cpp
+    src/TraySimulation.cpp
+)
+target_include_directories(nsl_tray_tests PRIVATE src)
+target_link_libraries(nsl_tray_tests PRIVATE Qt6::Widgets)
+target_compile_options(nsl_tray_tests PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(nsl_tray_tests PRIVATE QT_NO_KEYWORDS)
+
 enable_testing()
 add_test(NAME nsl_core_tests COMMAND nsl_core_tests)
+add_test(NAME nsl_tray_tests COMMAND nsl_tray_tests)
+set_tests_properties(nsl_tray_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 include(GNUInstallDirs)
 install(TARGETS nsl-linux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

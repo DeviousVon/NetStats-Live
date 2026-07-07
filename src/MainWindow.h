@@ -20,7 +20,7 @@ namespace nsl {
 class MainWindow : public QWidget {
     Q_OBJECT
 public:
-    explicit MainWindow(QWidget* parent = nullptr);
+    explicit MainWindow(bool simulate = false, QWidget* parent = nullptr);
     ~MainWindow() override;
     bool autoMinimizeEnabled() const;
     void populateScreenshotDemoData();

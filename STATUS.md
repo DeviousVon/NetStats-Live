@@ -47,3 +47,13 @@ Rendered artifacts:
 
 - `outputs/reports/visual/nsl-visual-pass-final.png`
 - `outputs/reports/visual/nsl-visual-comparison-final.png`
+
+
+## 2026-07-06 tray simulation / demo pass
+
+Implemented third-prompt tray verification work:
+
+- Added hidden `--simulate` mode that drives the Collector with deterministic synthetic traffic: rx-only burst, tx-only burst, bidirectional burst, then silence frames around 60s and 120s.
+- Split tray visual-state logic into testable code: activity bucket, TX/RX state mapping, 16/22/32px icon rendering, and renderer cache.
+- Added `nsl_tray_tests` to CTest. It verifies left/right flash mapping, green/yellow/red silence thresholds, no regeneration for unchanged visual state, 16px/22px legibility, and StatusNotifierItem activation mapping.
+- Verified on the live KDE Wayland session that `nsl-linux --simulate --minimized` registers a StatusNotifierItem with `Id`/`Title` `nsl-linux`; DBus `Activate` and `ContextMenu` calls both returned exit 0.

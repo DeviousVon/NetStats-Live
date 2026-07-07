@@ -7,11 +7,11 @@ NSL-Linux (`nsl-linux`) is a Linux desktop clone of AnalogX NetStat Live v2.15, 
 First working milestone exists:
 
 - C++20, Qt6 Widgets, CMake, no QML.
-- Custom-painted compact 170 px vertical window using QPainter.
+- Custom-painted compact 224 px vertical window using QPainter, matching the reference screenshot proportions.
 - Panes for Local Machine, Remote Machine, Incoming/Outgoing Totals, Incoming/Outgoing graphs, Threads, and CPU.
 - `/proc/net/dev`, `/proc/stat`, and `/proc/loadavg` collection on a 500 ms timer.
 - Async `ping -c 1` rolling average and async `traceroute -n -m 30 -q 1` hop count.
-- Runtime-painted system tray icon with TX/RX flash halves and activity-age triangle.
+- Runtime-painted system tray icon with cached visual states, TX/RX flash halves, and green/yellow/red activity-age triangle.
 - Right-click context menu with pane toggles, config toggles, interface radio menu, reset, minimize, exit.
 - URL ClipCap via `QClipboard::dataChanged` plus KDE Klipper DBus polling fallback.
 - QSettings INI persistence at `~/.config/nsl-linux/nsl-linux.conf`.
@@ -66,6 +66,14 @@ QT_QPA_PLATFORM=offscreen ./build/nsl-linux --screenshot outputs/reports/visual/
 
 The screenshot mode seeds stable demo values, hides persistence writes, grabs the widget with `QWidget::grab()`, saves a PNG, and exits.
 
+Hidden tray simulation/demo mode for deterministic local tray testing:
+
+```bash
+./build/nsl-linux --simulate --minimized
+```
+
+`--simulate` is intentionally hidden from `--help`; it feeds synthetic rx-only, tx-only, bidirectional, and silence frames into the Collector so the tray icon states and StatusNotifierItem behavior can be exercised without live network traffic.
+
 Install into a prefix:
 
 ```bash
@@ -81,7 +89,7 @@ cmake --install build --prefix ~/.local
 
 ## Tests
 
-The current automated test covers pure core behavior:
+The current automated tests cover pure core behavior plus tray visual/simulation behavior:
 
 - NetStat-style units and bits/bytes conversion.
 - `/proc/net/dev` parsing and ALL-interface summing excluding `lo`.
@@ -89,6 +97,11 @@ The current automated test covers pure core behavior:
 - `/proc/stat` CPU delta percent.
 - `/proc/loadavg` thread total parsing.
 - traceroute hop parsing.
+- Tray activity bucket transitions at 60s/120s of silence.
+- Tray left/right TX/RX flash state mapping.
+- Tray renderer cache: unchanged visual state does not regenerate pixmaps.
+- Tray icon legibility at 22x22 and 16x16 through pixel-marker checks.
+- StatusNotifierItem activation mapping: `Trigger` toggles; `Context` is left for the menu.
 
 Run it through CTest:
 
@@ -106,9 +119,12 @@ src/GraphPane.*
 src/TextPane.*
 src/Collector.*
 src/TrayIcon.*
+src/TrayIconVisual.*
+src/TraySimulation.*
 src/ClipCap.*
 src/Settings.*
 src/Core.*
 tests/test_core.cpp
+tests/test_tray_icon.cpp
 config/nsl-linux.desktop
 ```

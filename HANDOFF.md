@@ -53,7 +53,7 @@ ctest --test-dir build --output-on-failure
 
 ## Next likely action
 
-Start the next session/prompt from this workspace and continue with the second creation prompt. First recommended command:
+Continue with Bob's next creation prompt from this workspace. First recommended command:
 
 ```bash
 cd /home/bob/projects/nsl-linux && git status --short
@@ -75,3 +75,18 @@ Latest visual artifacts:
 - `outputs/reports/visual/nsl-visual-comparison-final.png`
 
 Implementation changed the main window width to match the 224px reference screenshot proportions rather than the earlier rough 170px estimate.
+
+
+## Tray simulation/demo pass notes
+
+The app now has a hidden deterministic tray demo mode:
+
+```bash
+./build/nsl-linux --simulate --minimized
+```
+
+It feeds synthetic Collector snapshots in this sequence: rx-only burst, tx-only burst, bidirectional burst, green silence just under 60s, yellow at 60s, and red at 120s. `--simulate` is hidden from `--help`.
+
+Tray visual logic is factored into `TrayIconVisual.*`; simulation frames live in `TraySimulation.*`. CTest includes `nsl_tray_tests` for TX/RX half mapping, activity triangle thresholds, cache churn avoidance, 16px/22px legibility, and SNI activation reason mapping.
+
+Live KDE Wayland verification registered an `nsl-linux` StatusNotifierItem and DBus `Activate` / `ContextMenu` method calls returned success.

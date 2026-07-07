@@ -28,3 +28,11 @@
 - [x] Render PNG via `QWidget::grab()` under offscreen Qt.
 - [x] Compare generated screenshot side-by-side with original reference.
 - [x] Tighten pane headers, graph bars/grid/average line, value rows, margins, border, and font fallback.
+
+
+## Completed in tray simulation/demo pass
+
+- [x] Add hidden `--simulate` deterministic Collector traffic mode.
+- [x] Add pure tray visual-state renderer/cache.
+- [x] Add CTest tray coverage for TX/RX halves, 60s/120s triangle thresholds, cache churn, 16px/22px legibility, and activation mapping.
+- [x] Verify KDE Wayland StatusNotifierItem registration and DBus Activate/ContextMenu calls.
