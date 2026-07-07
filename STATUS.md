@@ -76,3 +76,17 @@ Verification added/updated:
 - `nsl_lifecycle_tests` covers fake date, rollover history, autostart create/remove, auto-minimize decision, and single-instance constants.
 - Runtime single-instance smoke: first process stayed running; second launch exited 0.
 - Package checks: CPack generated a `.deb`, `dpkg-deb --info/--contents` verified metadata/installed files, `dpkg --dry-run -i` exited 0.
+
+
+## 2026-07-07 final QA pass
+
+Final QA found and fixed one lifecycle defect: SIGTERM previously used the default process action and did not save totals/config. Added a SIGTERM/SIGINT bridge into the Qt event loop plus a lifecycle regression test.
+
+QA evidence:
+
+- Real-traffic Wayland soak: ~175 seconds sampled, CPU avg 0.349%, max 0.400%, RSS delta 0 KiB.
+- SIGTERM direct smoke after fix: exit 0, config saved, simulated monthly totals non-zero.
+- SIGKILL/crash direct smoke after 65 seconds: config retained flushed totals, bounding hard-crash loss to the existing 60-second flush interval.
+- `ctest --test-dir build --output-on-failure`: 3/3 passed after the fix.
+
+Report: `docs/qa/final-qa-2026-07-07.md`.

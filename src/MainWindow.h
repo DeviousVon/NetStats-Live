@@ -25,6 +25,7 @@ public:
     bool autoMinimizeEnabled() const;
     void populateScreenshotDemoData();
     void setPersistenceEnabled(bool enabled);
+    void shutdownForSignal();
 
 public Q_SLOTS:
     Q_SCRIPTABLE void activateFromInstanceRequest();
@@ -47,6 +48,7 @@ private:
     void createMenus();
     void applyPaneVisibility();
     void applyAlwaysOnTop();
+    void configureLayerShell();
     void saveConfig();
     void saveTotals();
     QString totalText(std::uint64_t bytes) const;

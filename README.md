@@ -123,8 +123,11 @@ dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
 ## KDE / Wayland notes
 
 - The main window is frameless and draggable from the background using `QWindow::startSystemMove()`.
+- The app has a fixed AnalogX-style width/height derived from visible panes; it persists window position and pane visibility rather than arbitrary free-resize dimensions.
 - `QSystemTrayIcon` maps to KDE Plasma's StatusNotifierItem support.
 - Single-instance activation uses DBus. Launching `nsl-linux` again activates the existing window and exits.
+- SIGTERM/SIGINT are bridged into the Qt event loop so totals/config are saved before exit. A hard crash/SIGKILL can lose at most the last 60 seconds because totals are flushed once per minute.
+- Always on Top changes are applied by a live hide/show cycle because Qt/Wayland window flags and layer-shell state need the surface to be recreated. This may briefly flicker but does not require a full process restart.
 - Background clipboard access is Wayland-restricted. URL ClipCap uses normal Qt clipboard notifications when available and polls Klipper over DBus (`org.kde.klipper`, `/klipper`, `getClipboardContents`) every 2 seconds as a KDE fallback.
 
 ### KWin “Keep above” window rule

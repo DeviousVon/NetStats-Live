@@ -48,3 +48,13 @@
 - [x] Add CPack DEB config with Qt runtime Depends and `traceroute` Recommends.
 - [x] Build package and verify with `dpkg --dry-run -i`.
 - [x] Update README with features, screenshots, KWin rule instructions, packaging, and AnalogX inspiration/clean-room note.
+
+
+## Completed in final QA pass
+
+- [x] Run real-traffic Wayland soak and record CPU/RSS stability.
+- [x] Reproduce and fix SIGTERM totals/config persistence.
+- [x] Verify SIGKILL/crash loses no more than the latest unflushed 60-second interval.
+- [x] Tighten Always on Top reapplication with a live hide/show cycle for Wayland/layer-shell state.
+- [x] Document Wayland limitations vs the original Windows app.
+- [x] Add final QA report under `docs/qa/final-qa-2026-07-07.md`.
