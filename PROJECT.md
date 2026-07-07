@@ -24,7 +24,7 @@ Match AnalogX NetStat Live v2.15 as closely as practical:
 - Near-black background.
 - Thin late-90s beveled pane separators.
 - Small bitmap-style sans labels.
-- Bright digital green values and graph fills.
+- AnalogX-style cyan/teal values and graph fills, with dim warm gray-olive labels.
 - Last-60-second graphs with faint grid, filled area, 60-second average line, and maximum since reset.
 - Runtime-painted tray icon reproducing the TX/RX flash and activity-age indicator concept.
 

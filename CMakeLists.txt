@@ -58,6 +58,18 @@ target_link_libraries(nsl_tray_tests PRIVATE Qt6::Widgets)
 target_compile_options(nsl_tray_tests PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(nsl_tray_tests PRIVATE QT_NO_KEYWORDS)
 
+add_executable(nsl_visual_theme_tests
+    tests/test_visual_theme.cpp
+    src/Core.cpp
+    src/PaneWidget.cpp
+    src/GraphPane.cpp
+)
+target_include_directories(nsl_visual_theme_tests PRIVATE src)
+target_link_libraries(nsl_visual_theme_tests PRIVATE Qt6::Widgets)
+target_compile_options(nsl_visual_theme_tests PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(nsl_visual_theme_tests PRIVATE QT_NO_KEYWORDS)
+add_dependencies(nsl_visual_theme_tests nsl-linux)
+
 add_executable(nsl_lifecycle_tests
     tests/test_lifecycle.cpp
     src/Lifecycle.cpp
@@ -72,8 +84,9 @@ add_dependencies(nsl_lifecycle_tests nsl-linux)
 enable_testing()
 add_test(NAME nsl_core_tests COMMAND nsl_core_tests)
 add_test(NAME nsl_tray_tests COMMAND nsl_tray_tests)
+add_test(NAME nsl_visual_theme_tests COMMAND nsl_visual_theme_tests)
 add_test(NAME nsl_lifecycle_tests COMMAND nsl_lifecycle_tests)
-set_tests_properties(nsl_tray_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+set_tests_properties(nsl_tray_tests nsl_visual_theme_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 include(GNUInstallDirs)
 install(TARGETS nsl-linux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

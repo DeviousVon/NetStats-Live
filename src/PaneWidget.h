@@ -25,6 +25,7 @@ public:
     static QFont headerFont();
     static QFont labelFont();
     static QFont valueFont();
+    static QFont graphValueFont();
     static int headerHeight();
 
 protected:

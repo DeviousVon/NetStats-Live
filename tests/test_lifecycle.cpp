@@ -95,6 +95,7 @@ int main(int argc, char** argv) {
     QProcessEnvironment processEnv = QProcessEnvironment::systemEnvironment();
     processEnv.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
     processEnv.insert(QStringLiteral("XDG_CONFIG_HOME"), signalConfig.path());
+    processEnv.insert(QStringLiteral("DBUS_SESSION_BUS_ADDRESS"), QStringLiteral("unix:path=%1/no-session-bus").arg(signalConfig.path()));
     process.setProcessEnvironment(processEnv);
     process.setProgram(binaryPath);
     process.setArguments({QStringLiteral("--simulate"), QStringLiteral("--minimized")});

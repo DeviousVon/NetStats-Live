@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    nsl::MainWindow window(parser.isSet(simulateOption));
+    nsl::MainWindow window(parser.isSet(simulateOption) || screenshotMode);
     QSocketNotifier* signalNotifier = nullptr;
     if (!screenshotMode && installUnixSignalHandlers()) {
         signalNotifier = new QSocketNotifier(signalPipeFds[0], QSocketNotifier::Read, &app);

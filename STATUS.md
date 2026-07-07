@@ -38,8 +38,8 @@ Use Bob's second prompt in the next session to continue fidelity/polish/packagin
 Implemented second-prompt visual tightening:
 
 - Pane headers now use dark raised strips, left-aligned small-caps-style text, and a condensed font fallback chain.
-- Graphs now draw 60 one-pixel vertical bars, subtle 25/50/75% grid lines, and a 1px lighter average line.
-- Graph value blocks now use dense `Cur` / `Avg` / `Max` right-aligned columns.
+- Graphs now draw a smoothed filled cyan area on a plain black background, matching the AnalogX mountain-graph direction.
+- Graph value blocks now spell out `Current` / `Average` / `Max`; labels are dim warm gray-olive and values are large bold cyan.
 - The window is frameless, dark, marginless, and uses a 1px dark-gray outer border.
 - Added `--screenshot <path>` deterministic PNG mode using `QWidget::grab()` for visual regression checks.
 
@@ -55,7 +55,7 @@ Implemented third-prompt tray verification work:
 
 - Added hidden `--simulate` mode that drives the Collector with deterministic synthetic traffic: rx-only burst, tx-only burst, bidirectional burst, then silence frames around 60s and 120s.
 - Split tray visual-state logic into testable code: activity bucket, TX/RX state mapping, 16/22/32px icon rendering, and renderer cache.
-- Added `nsl_tray_tests` to CTest. It verifies left/right flash mapping, green/yellow/red silence thresholds, no regeneration for unchanged visual state, 16px/22px legibility, and StatusNotifierItem activation mapping.
+- Added `nsl_tray_tests` to CTest. It verifies left/right flash mapping, cyan/yellow/red silence thresholds, no regeneration for unchanged visual state, 16px/22px legibility, and StatusNotifierItem activation mapping.
 - Verified on the live KDE Wayland session that `nsl-linux --simulate --minimized` registers a StatusNotifierItem with `Id`/`Title` `nsl-linux`; DBus `Activate` and `ContextMenu` calls both returned exit 0.
 
 
@@ -90,3 +90,10 @@ QA evidence:
 - `ctest --test-dir build --output-on-failure`: 3/3 passed after the fix.
 
 Report: `docs/qa/final-qa-2026-07-07.md`.
+
+## 2026-07-07 AnalogX cyan visual rework
+
+- Supplied side-by-side screenshot showed the app was still too green and cramped. Updated the clean-room visual theme to match the original direction: centralized `Theme` palette, cyan/teal graph/value colors, dim warm gray-olive labels, centered section headers with side rules, spelled-out Current/Average/Max labels, larger graph values, wider 238 px window, and smoothed filled area graphs with no horizontal grid.
+- Added `nsl_visual_theme_tests` to CTest. It verifies palette constants, PaneWidget color routing, spelled graph labels, no legacy bright-green graph pixels, and smoothing behavior.
+- Screenshot artifacts: `reports/visual/nsl-analogx-cyan-pass.png` and comparison crop `reports/visual/nsl-analogx-cyan-comparison.png`.
+- Also isolated the lifecycle SIGTERM smoke from any installed/running `nsl-linux` instance by forcing an invalid per-test DBus session address.

@@ -65,3 +65,9 @@ Package contents verified with `dpkg-deb --contents`:
 ## QA reports
 
 - `docs/qa/final-qa-2026-07-07.md` — final real-traffic/performance, SIGTERM/SIGKILL, and Wayland limitation QA report.
+
+## 2026-07-07 AnalogX cyan visual pass
+
+- `reports/visual/nsl-analogx-cyan-pass.png` — fresh `--screenshot` render after reworking palette, headers, labels, typography, width, and graph style.
+- `reports/visual/nsl-analogx-cyan-comparison.png` — crop of the supplied AnalogX reference next to the reworked render for visual comparison.
+- Mechanical screenshot marker counts from the render: cyan 3328, brighter value cyan 848, olive 81, legacy bright green 0.

@@ -1,5 +1,7 @@
 #include "MainWindow.h"
 
+#include "Theme.h"
+
 #ifdef NSL_HAS_LAYER_SHELL
 #include <LayerShellQt/Window>
 #endif
@@ -18,7 +20,7 @@
 namespace nsl {
 namespace {
 
-constexpr int WindowWidth = 224;
+constexpr int WindowWidth = 238;
 constexpr int TitleHeight = 18;
 
 std::size_t paneIndex(PaneId id) {
@@ -168,11 +170,11 @@ void MainWindow::createPanes() {
     layout_->setSpacing(0);
     layout_->setSizeConstraint(QLayout::SetFixedSize);
 
-    localPane_ = new TextPane(QStringLiteral("Local"), 66, this);
-    remotePane_ = new TextPane(QStringLiteral("Remote"), 66, this);
-    incomingTotalsPane_ = new TextPane(QStringLiteral("Incoming Totals"), 43, this);
+    localPane_ = new TextPane(QStringLiteral("Local"), 67, this);
+    remotePane_ = new TextPane(QStringLiteral("Remote"), 67, this);
+    incomingTotalsPane_ = new TextPane(QStringLiteral("Incoming Totals"), 47, this);
     incomingPane_ = new GraphPane(QStringLiteral("Incoming"), GraphValueMode::NetworkRate, this);
-    outgoingTotalsPane_ = new TextPane(QStringLiteral("Outgoing Totals"), 43, this);
+    outgoingTotalsPane_ = new TextPane(QStringLiteral("Outgoing Totals"), 47, this);
     outgoingPane_ = new GraphPane(QStringLiteral("Outgoing"), GraphValueMode::NetworkRate, this);
     threadsPane_ = new GraphPane(QStringLiteral("Threads"), GraphValueMode::Count, this);
     cpuPane_ = new GraphPane(QStringLiteral("CPU"), GraphValueMode::Percent, this);
@@ -418,16 +420,16 @@ void MainWindow::paintEvent(QPaintEvent* event) {
     Q_UNUSED(event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, false);
-    painter.fillRect(rect(), PaneWidget::backgroundColor());
-    painter.fillRect(QRect(1, 1, width() - 2, TitleHeight - 1), PaneWidget::panelColor());
-    painter.setPen(QColor(0x24, 0x24, 0x24));
+    painter.fillRect(rect(), Theme::Background);
+    painter.fillRect(QRect(1, 1, width() - 2, TitleHeight - 1), Theme::PanelBackground);
+    painter.setPen(Theme::Border);
     painter.drawLine(1, 1, width() - 2, 1);
     painter.setFont(PaneWidget::headerFont());
-    painter.setPen(PaneWidget::valueColor());
+    painter.setPen(Theme::HeaderText);
     painter.drawText(QRect(6, 0, width() - 12, TitleHeight), Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("nsl-linux"));
-    painter.setPen(QColor(0x00, 0x1b, 0x16));
+    painter.setPen(Theme::DimRuleLine);
     painter.drawLine(1, TitleHeight - 1, width() - 2, TitleHeight - 1);
-    painter.setPen(PaneWidget::borderColor());
+    painter.setPen(Theme::Border);
     painter.drawRect(rect().adjusted(0, 0, -1, -1));
 }
 
