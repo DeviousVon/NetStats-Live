@@ -97,20 +97,31 @@ install(FILES assets/icons/hicolor/256x256/apps/nsl-linux.png DESTINATION ${CMAK
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGE_NAME "nsl-linux")
-set(CPACK_PACKAGE_VENDOR "NSL-Linux")
+set(CPACK_PACKAGE_VENDOR "NetStats-Live")
 set(CPACK_PACKAGE_CONTACT "NSL-Linux maintainers")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "NetStat Live inspired network monitor for Linux")
-set(CPACK_PACKAGE_HOMEPAGE_URL "https://www.analogx.com/contents/download/Network/nsl/Freeware.htm")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/DeviousVon/NetStats-Live")
 set(CPACK_DEBIAN_PACKAGE_SECTION "net")
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/outputs/final")
+set(NSL_PACKAGE_FLAVOR "generic")
+if(LayerShellQt_FOUND)
+    set(NSL_PACKAGE_FLAVOR "kde")
+endif()
+execute_process(COMMAND dpkg --print-architecture
+    OUTPUT_VARIABLE NSL_DEB_ARCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+if(NOT NSL_DEB_ARCH)
+    set(NSL_DEB_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+set(CPACK_PACKAGE_FILE_NAME "NetStats-Live_${PROJECT_VERSION}_${NSL_PACKAGE_FLAVOR}_${NSL_DEB_ARCH}")
 set(NSL_DEBIAN_DEPENDS "libc6 (>= 2.38), libstdc++6 (>= 13), libqt6core6t64 (>= 6.4) | libqt6core6 (>= 6.4), libqt6gui6 (>= 6.4), libqt6widgets6 (>= 6.4), libqt6dbus6 (>= 6.4), libqt6network6 (>= 6.4)")
 if(LayerShellQt_FOUND)
     string(APPEND NSL_DEBIAN_DEPENDS ", liblayershellqtinterface6 (>= 6.4), libqt6waylandclient6 (>= 6.4)")
 endif()
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "${NSL_DEBIAN_DEPENDS}")
-set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "traceroute")
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "iputils-ping, traceroute")
 set(CPACK_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
     OWNER_READ OWNER_WRITE OWNER_EXECUTE
     GROUP_READ GROUP_EXECUTE
