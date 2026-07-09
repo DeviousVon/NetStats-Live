@@ -3,6 +3,7 @@
 
 #include "MainWindow.h"
 
+#include "Lifecycle.h"
 #include "Theme.h"
 
 #ifdef NSL_HAS_LAYER_SHELL
@@ -96,6 +97,10 @@ MainWindow::~MainWindow() {
 
 bool MainWindow::autoMinimizeEnabled() const {
     return config_.autoMinimize;
+}
+
+bool MainWindow::trayAvailable() const {
+    return tray_.isAvailable();
 }
 
 void MainWindow::setPersistenceEnabled(bool enabled) {
@@ -277,7 +282,7 @@ void MainWindow::createMenus() {
     contextMenu_.addMenu(&configMenu_);
     contextMenu_.addSeparator();
     contextMenu_.addAction(tr("Reset"), this, &MainWindow::resetStatistics);
-    contextMenu_.addAction(tr("Minimize"), this, &QWidget::hide);
+    contextMenu_.addAction(tr("Minimize"), this, &MainWindow::minimizeRequested);
     contextMenu_.addAction(tr("Exit"), qApp, &QApplication::quit);
 }
 
@@ -375,6 +380,14 @@ void MainWindow::resetStatistics() {
     threadsPane_->resetGraph();
     cpuPane_->resetGraph();
     collector_.resetSessionTotals();
+}
+
+void MainWindow::minimizeRequested() {
+    if (shouldHideToTray(tray_.isAvailable())) {
+        hide();
+    } else {
+        showMinimized();
+    }
 }
 
 void MainWindow::toggleVisibleFromTray() {

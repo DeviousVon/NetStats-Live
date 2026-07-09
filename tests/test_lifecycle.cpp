@@ -87,9 +87,13 @@ int main(int argc, char** argv) {
     expectTrue(settings.setAutoStart(false, buildPath), "autostart remove succeeds");
     expectTrue(!QFile::exists(autostartPath), "autostart desktop file removed");
 
-    expectTrue(shouldShowMainWindow(false, false), "normal startup shows window");
-    expectTrue(!shouldShowMainWindow(true, false), "--minimized hides window");
-    expectTrue(!shouldShowMainWindow(false, true), "Auto Minimize hides window");
+    expectTrue(shouldShowMainWindow(false, false, true), "normal startup shows window");
+    expectTrue(!shouldShowMainWindow(true, false, true), "--minimized hides window when tray exists");
+    expectTrue(!shouldShowMainWindow(false, true, true), "Auto Minimize hides window when tray exists");
+    expectTrue(shouldShowMainWindow(true, false, false), "--minimized is ignored without tray");
+    expectTrue(shouldShowMainWindow(false, true, false), "Auto Minimize is ignored without tray");
+    expectTrue(shouldHideToTray(true), "Minimize hides to tray when tray exists");
+    expectTrue(!shouldHideToTray(false), "Minimize stays reachable without tray");
     expectTrue(!singleInstanceServiceName().isEmpty(), "single-instance service name present");
     expectTrue(!singleInstanceObjectPath().isEmpty(), "single-instance object path present");
 

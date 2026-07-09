@@ -26,6 +26,7 @@ public:
     explicit MainWindow(bool simulate = false, QWidget* parent = nullptr);
     ~MainWindow() override;
     bool autoMinimizeEnabled() const;
+    bool trayAvailable() const;
     void populateScreenshotDemoData();
     void setPersistenceEnabled(bool enabled);
     void shutdownForSignal();
@@ -44,6 +45,7 @@ private Q_SLOTS:
     void updateFromCollector(const CollectorSnapshot& snapshot);
     void rebuildMenus();
     void resetStatistics();
+    void minimizeRequested();
     void toggleVisibleFromTray();
 
 private:
