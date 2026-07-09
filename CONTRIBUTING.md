@@ -90,4 +90,4 @@ tests/test_visual_theme.cpp visual-regression guardrails
 - [ ] `ctest --test-dir ... --output-on-failure` passes.
 - [ ] If packaging changed, both KDE and generic `.deb` builds were smoke-tested with `dpkg --dry-run`.
 - [ ] Public docs were updated for changed behavior or limitations.
-- [ ] No secrets, tokens, private hostnames/IPs, or local absolute paths were committed.
+- [ ] No credentials, private hostnames/IPs, or local absolute paths were committed.
