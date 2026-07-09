@@ -86,6 +86,7 @@ add_test(NAME nsl_core_tests COMMAND nsl_core_tests)
 add_test(NAME nsl_tray_tests COMMAND nsl_tray_tests)
 add_test(NAME nsl_visual_theme_tests COMMAND nsl_visual_theme_tests)
 add_test(NAME nsl_lifecycle_tests COMMAND nsl_lifecycle_tests)
+add_test(NAME nsl_migration_logging_tests COMMAND nsl_lifecycle_tests --migration-copy-failure-logging-check)
 set_tests_properties(nsl_tray_tests nsl_visual_theme_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 include(GNUInstallDirs)

@@ -5,21 +5,31 @@
 #include "Settings.h"
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QSettings>
+#include <QStringList>
 #include <QTemporaryDir>
 #include <QThread>
 
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 
 namespace {
 
 int failures = 0;
+QStringList capturedWarnings;
+
+void captureWarnings(QtMsgType type, const QMessageLogContext&, const QString& message) {
+    if (type == QtWarningMsg) {
+        capturedWarnings.append(message);
+    }
+}
 
 void expectTrue(bool value, const char* expression) {
     if (!value) {
@@ -54,9 +64,59 @@ bool writeText(const QString& path, const QString& content) {
     return file.flush();
 }
 
+bool containsWarning(const QString& needle) {
+    for (const QString& warning : capturedWarnings) {
+        if (warning.contains(needle)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void printCapturedWarnings() {
+    for (const QString& warning : capturedWarnings) {
+        std::cerr << "captured warning: " << warning.toStdString() << "\n";
+    }
+}
+
+int runMigrationCopyFailureLoggingCheck(int argc, char** argv) {
+    QTemporaryDir tempConfig;
+    qputenv("XDG_CONFIG_HOME", tempConfig.path().toUtf8());
+    QCoreApplication app(argc, argv);
+
+    const QString legacyDir = QDir(tempConfig.path()).filePath(QStringLiteral("nsl-linux"));
+    expectTrue(QDir().mkpath(legacyDir), "legacy config directory created for copy-failure logging check");
+    const QString legacyConfigPath = QDir(legacyDir).filePath(QStringLiteral("nsl-linux.conf"));
+    {
+        QSettings legacy(legacyConfigPath, QSettings::IniFormat);
+        legacy.setValue(QStringLiteral("remote/target"), QStringLiteral("legacy.example"));
+        legacy.sync();
+    }
+
+    const QString blockingPath = QDir(tempConfig.path()).filePath(QStringLiteral("netstats-live"));
+    expectTrue(writeText(blockingPath, QStringLiteral("not a directory\n")), "file blocks netstats-live config directory creation");
+
+    capturedWarnings.clear();
+    qInstallMessageHandler(captureWarnings);
+    nsl::AppSettings settings;
+    qInstallMessageHandler(nullptr);
+
+    const QString expectedWarning = QStringLiteral("Unable to migrate legacy config");
+    expectTrue(containsWarning(expectedWarning), "legacy config copy failure is logged");
+    if (!containsWarning(expectedWarning)) {
+        printCapturedWarnings();
+    }
+
+    return failures == 0 ? 0 : 1;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc > 1 && std::strcmp(argv[1], "--migration-copy-failure-logging-check") == 0) {
+        return runMigrationCopyFailureLoggingCheck(argc, argv);
+    }
+
     QTemporaryDir tempConfig;
     qputenv("XDG_CONFIG_HOME", tempConfig.path().toUtf8());
     qputenv("NSL_FAKE_DATE", "2026-06-30");
