@@ -32,6 +32,18 @@ void archiveMonthlyTotals(QSettings& settings, const QString& monthKey, std::uin
     settings.setValue(QStringLiteral("history/%1/txMonth").arg(monthKey), QVariant::fromValue<qulonglong>(txBytes));
 }
 
+QString previousMonthKey(const QString& monthKey) {
+    const QDate firstOfMonth = QDate::fromString(monthKey + QStringLiteral("-01"), QStringLiteral("yyyy-MM-dd"));
+    return firstOfMonth.isValid() ? firstOfMonth.addMonths(-1).toString(QStringLiteral("yyyy-MM")) : QString();
+}
+
+std::uint64_t archivedMonthTotal(QSettings& settings, const QString& monthKey, const QString& direction) {
+    if (monthKey.isEmpty()) {
+        return 0;
+    }
+    return settings.value(QStringLiteral("history/%1/%2Month").arg(monthKey, direction), 0).toULongLong();
+}
+
 QString resolvedExecutablePath(const QString& executablePath) {
     const QFileInfo info(executablePath);
     if (info.isAbsolute()) {
@@ -125,15 +137,22 @@ AppConfig AppSettings::load() const {
     config.windowPos = settings.value(QStringLiteral("window/pos"), QPoint()).toPoint();
 
     const QString currentMonth = currentMonthKey();
+    const QString previousMonth = previousMonthKey(currentMonth);
     const QString storedMonth = settings.value(QStringLiteral("totals/monthKey"), currentMonth).toString();
     const std::uint64_t storedRxMonth = settings.value(QStringLiteral("totals/rxMonth"), 0).toULongLong();
     const std::uint64_t storedTxMonth = settings.value(QStringLiteral("totals/txMonth"), 0).toULongLong();
     config.monthKey = currentMonth;
+    config.lastRxMonth = archivedMonthTotal(settings, previousMonth, QStringLiteral("rx"));
+    config.lastTxMonth = archivedMonthTotal(settings, previousMonth, QStringLiteral("tx"));
     if (storedMonth == currentMonth) {
         config.rxMonth = storedRxMonth;
         config.txMonth = storedTxMonth;
     } else {
         archiveMonthlyTotals(settings, storedMonth, storedRxMonth, storedTxMonth);
+        if (storedMonth == previousMonth) {
+            config.lastRxMonth = storedRxMonth;
+            config.lastTxMonth = storedTxMonth;
+        }
         settings.setValue(QStringLiteral("totals/monthKey"), currentMonth);
         settings.setValue(QStringLiteral("totals/rxMonth"), QVariant::fromValue<qulonglong>(0));
         settings.setValue(QStringLiteral("totals/txMonth"), QVariant::fromValue<qulonglong>(0));

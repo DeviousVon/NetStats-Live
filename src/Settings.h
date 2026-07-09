@@ -44,6 +44,8 @@ struct AppConfig {
     QString monthKey;
     std::uint64_t rxMonth = 0;
     std::uint64_t txMonth = 0;
+    std::uint64_t lastRxMonth = 0;
+    std::uint64_t lastTxMonth = 0;
 };
 
 class AppSettings {

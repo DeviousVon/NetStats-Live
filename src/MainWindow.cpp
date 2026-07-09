@@ -349,6 +349,8 @@ void MainWindow::updateFromCollector(const CollectorSnapshot& snapshot) {
     latestSnapshot_ = snapshot;
     if (!config_.monthKey.isEmpty() && config_.monthKey != snapshot.monthKey) {
         settings_.saveMonthlyTotals(config_.monthKey, config_.rxMonth, config_.txMonth);
+        config_.lastRxMonth = config_.rxMonth;
+        config_.lastTxMonth = config_.txMonth;
     }
     config_.rxMonth = snapshot.rxMonth;
     config_.txMonth = snapshot.txMonth;
@@ -357,8 +359,8 @@ void MainWindow::updateFromCollector(const CollectorSnapshot& snapshot) {
 
     localPane_->setRows({{tr("Name"), snapshot.hostname}, {tr("IP"), snapshot.ipAddress}, {tr("Device"), snapshot.selectedInterface}});
     remotePane_->setRows({{tr("Name"), snapshot.remoteTarget}, {tr("Ping"), pingText(snapshot)}, {tr("Hops"), hopText(snapshot)}});
-    incomingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(snapshot.rxSession)}, {tr("This Month"), totalText(snapshot.rxMonth)}, {tr("Last Month"), totalText(0)}});
-    outgoingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(snapshot.txSession)}, {tr("This Month"), totalText(snapshot.txMonth)}, {tr("Last Month"), totalText(0)}});
+    incomingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(snapshot.rxSession)}, {tr("This Month"), totalText(snapshot.rxMonth)}, {tr("Last Month"), totalText(config_.lastRxMonth)}});
+    outgoingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(snapshot.txSession)}, {tr("This Month"), totalText(snapshot.txMonth)}, {tr("Last Month"), totalText(config_.lastTxMonth)}});
 
     incomingPane_->pushSample(snapshot.rxRate);
     outgoingPane_->pushSample(snapshot.txRate);
