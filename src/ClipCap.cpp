@@ -18,6 +18,8 @@ ClipCap::ClipCap(QObject* parent)
     if (auto* clipboard = QApplication::clipboard()) {
         connect(clipboard, &QClipboard::dataChanged, this, &ClipCap::clipboardChanged);
     }
+    // KDE Wayland blocks arbitrary background clipboard reads; Klipper exposes
+    // the current clipboard over DBus, so poll it only when that service exists.
     auto* iface = QDBusConnection::sessionBus().interface();
     klipperAvailable_ = iface != nullptr && iface->isServiceRegistered(QStringLiteral("org.kde.klipper"));
     klipperTimer_.setInterval(2000);

@@ -11,6 +11,7 @@
 
 namespace nsl {
 
+// Shared chrome, palette, and typography for all vertical NSL panes.
 class PaneWidget : public QWidget {
     Q_OBJECT
 public:

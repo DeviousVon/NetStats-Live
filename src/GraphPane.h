@@ -15,6 +15,7 @@ namespace nsl {
 
 enum class GraphValueMode { NetworkRate, Percent, Count };
 
+// Visible-window graph scale after padding and empty-traffic handling.
 struct GraphScaleRange {
     double minimum = 0.0;
     double maximum = 1.0;
@@ -27,6 +28,7 @@ GraphScaleRange targetGraphScaleRange(GraphValueMode mode, const std::vector<dou
 GraphScaleRange easeGraphScaleRange(const GraphScaleRange& current, const GraphScaleRange& target, bool initialized);
 double normalizeGraphSample(double sample, const GraphScaleRange& range);
 
+// Custom-painted scrolling graph pane with current/average/max text.
 class GraphPane : public PaneWidget {
     Q_OBJECT
 public:

@@ -10,6 +10,7 @@
 
 namespace nsl {
 
+// Custom-painted row/column pane for machine and total statistics.
 class TextPane : public PaneWidget {
     Q_OBJECT
 public:

@@ -20,6 +20,7 @@
 
 namespace nsl {
 
+// Frameless top-level widget that owns panes, menus, tray, collector, and settings.
 class MainWindow : public QWidget {
     Q_OBJECT
 public:

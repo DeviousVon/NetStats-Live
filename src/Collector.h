@@ -18,6 +18,7 @@
 
 namespace nsl {
 
+// Immutable-ish sample emitted by Collector for one UI/tray update.
 struct CollectorSnapshot {
     QString hostname;
     QString ipAddress;
@@ -45,6 +46,7 @@ struct CollectorSnapshot {
     QString monthKey;
 };
 
+// Polls Linux /proc network/CPU/thread counters and optional ping/traceroute probes.
 class Collector : public QObject {
     Q_OBJECT
 public:
