@@ -5,6 +5,7 @@
 
 #include <QCoreApplication>
 #include <QDate>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -15,14 +16,28 @@
 namespace nsl {
 namespace {
 
+QString configBaseDir() {
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
+}
+
 QString configDir() {
-    const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    return QDir(base).filePath(QStringLiteral("netstats-live"));
+    return QDir(configBaseDir()).filePath(QStringLiteral("netstats-live"));
 }
 
 QString legacyConfigPath() {
-    const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    return QDir(QDir(base).filePath(QStringLiteral("nsl-linux"))).filePath(QStringLiteral("nsl-linux.conf"));
+    return QDir(QDir(configBaseDir()).filePath(QStringLiteral("nsl-linux"))).filePath(QStringLiteral("nsl-linux.conf"));
+}
+
+QString autostartDir() {
+    return QDir(configBaseDir()).filePath(QStringLiteral("autostart"));
+}
+
+QString newAutoStartPath() {
+    return QDir(autostartDir()).filePath(QStringLiteral("netstats-live.desktop"));
+}
+
+QString legacyAutoStartPath() {
+    return QDir(autostartDir()).filePath(QStringLiteral("nsl-linux.desktop"));
 }
 
 void migrateLegacyConfigIfNeeded(const QString& settingsPath) {
@@ -31,7 +46,57 @@ void migrateLegacyConfigIfNeeded(const QString& settingsPath) {
     }
     const QString legacyPath = legacyConfigPath();
     if (QFile::exists(legacyPath)) {
-        QFile::copy(legacyPath, settingsPath);
+        QFile legacyFile(legacyPath);
+        if (!legacyFile.copy(settingsPath)) {
+            qWarning().noquote() << "Unable to migrate legacy config" << legacyPath << "to" << settingsPath << ":" << legacyFile.errorString();
+        }
+    }
+}
+
+void migrateLegacyAutoStartIfNeeded() {
+    const QString newPath = newAutoStartPath();
+    const QString legacyPath = legacyAutoStartPath();
+    if (QFile::exists(newPath)) {
+        if (QFile::exists(legacyPath) && !QFile::remove(legacyPath)) {
+            qWarning().noquote() << "Could not remove legacy autostart entry" << legacyPath << "after finding" << newPath;
+        }
+        return;
+    }
+
+    if (!QFile::exists(legacyPath)) {
+        return;
+    }
+
+    QFile legacyFile(legacyPath);
+    if (!legacyFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning().noquote() << "Unable to read legacy autostart entry" << legacyPath << ":" << legacyFile.errorString();
+        return;
+    }
+
+    QString migrated = QString::fromUtf8(legacyFile.readAll());
+    migrated.replace(QStringLiteral("AnalogX NetStat Live style network monitor for Linux"), QStringLiteral("Live network throughput and CPU monitor widget for Linux"));
+    migrated.replace(QStringLiteral("NSL-Linux"), QStringLiteral("NetStats-Live"));
+    migrated.replace(QStringLiteral("nsl-linux"), QStringLiteral("netstats-live"));
+
+    if (!QDir().mkpath(QFileInfo(newPath).absolutePath())) {
+        qWarning().noquote() << "Unable to create autostart directory for" << newPath;
+        return;
+    }
+
+    QSaveFile file(newPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning().noquote() << "Unable to create migrated autostart entry" << newPath << ":" << file.errorString();
+        return;
+    }
+    QTextStream stream(&file);
+    stream << migrated;
+    if (!file.commit()) {
+        qWarning().noquote() << "Unable to commit migrated autostart entry" << newPath << ":" << file.errorString();
+        return;
+    }
+
+    if (!QFile::remove(legacyPath)) {
+        qWarning().noquote() << "Migrated autostart entry to" << newPath << "but could not remove legacy entry" << legacyPath;
     }
 }
 
@@ -110,8 +175,11 @@ QString paneDisplayName(PaneId id) {
 
 AppSettings::AppSettings()
     : settingsPath_(QDir(configDir()).filePath(QStringLiteral("netstats-live.conf"))) {
-    QDir().mkpath(configDir());
+    if (!QDir().mkpath(configDir())) {
+        qWarning().noquote() << "Unable to create config directory" << configDir();
+    }
     migrateLegacyConfigIfNeeded(settingsPath_);
+    migrateLegacyAutoStartIfNeeded();
 }
 
 QString AppSettings::currentMonthKey() {
@@ -219,8 +287,7 @@ QString AppSettings::configPath() const {
 }
 
 QString AppSettings::autoStartPath() const {
-    const QString autostart = QDir(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)).filePath(QStringLiteral("autostart"));
-    return QDir(autostart).filePath(QStringLiteral("netstats-live.desktop"));
+    return newAutoStartPath();
 }
 
 bool AppSettings::setAutoStart(bool enabled, const QString& executablePath) const {

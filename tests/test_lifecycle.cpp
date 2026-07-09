@@ -7,6 +7,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QSettings>
@@ -43,6 +44,16 @@ QString readAll(const QString& path) {
     return QString::fromUtf8(file.readAll());
 }
 
+bool writeText(const QString& path, const QString& content) {
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+    file.write(content.toUtf8());
+    return file.flush();
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -61,17 +72,53 @@ int main(int argc, char** argv) {
     expectEqual(AppSettings::currentMonthKey(), QStringLiteral("2026-07"), "NSL_FAKE_DATE yyyy-MM controls month key");
 
     const QString legacyDir = QDir(tempConfig.path()).filePath(QStringLiteral("nsl-linux"));
+    const QString newDir = QDir(tempConfig.path()).filePath(QStringLiteral("netstats-live"));
     expectTrue(QDir().mkpath(legacyDir), "legacy config directory created");
+    expectTrue(QDir().mkpath(newDir), "new config directory created");
     const QString legacyConfigPath = QDir(legacyDir).filePath(QStringLiteral("nsl-linux.conf"));
+    const QString newConfigPath = QDir(newDir).filePath(QStringLiteral("netstats-live.conf"));
     {
         QSettings legacy(legacyConfigPath, QSettings::IniFormat);
         legacy.setValue(QStringLiteral("config/autoMinimize"), true);
         legacy.setValue(QStringLiteral("remote/target"), QStringLiteral("legacy.example"));
         legacy.sync();
     }
+    {
+        QSettings existing(newConfigPath, QSettings::IniFormat);
+        existing.setValue(QStringLiteral("remote/target"), QStringLiteral("existing.example"));
+        existing.sync();
+    }
+
+    const QString legacyAutostartPath = QDir(QDir(tempConfig.path()).filePath(QStringLiteral("autostart"))).filePath(QStringLiteral("nsl-linux.desktop"));
+    expectTrue(writeText(legacyAutostartPath,
+                   QStringLiteral("[Desktop Entry]\n"
+                                  "Type=Application\n"
+                                  "Name=NSL-Linux\n"
+                                  "Comment=AnalogX NetStat Live style network monitor for Linux\n"
+                                  "Exec=\"/usr/bin/nsl-linux\" --minimized\n"
+                                  "Icon=nsl-linux\n"
+                                  "StartupWMClass=nsl-linux\n")),
+        "legacy autostart desktop file created");
+
+    AppSettings preexistingSettings;
+    AppConfig preexisting = preexistingSettings.load();
+    expectEqual(preexisting.remoteTarget, QStringLiteral("existing.example"), "existing netstats-live config is not overwritten by legacy migration");
+    expectEqual(preexistingSettings.configPath(), newConfigPath, "config path uses netstats-live identity");
+    const QString migratedAutostart = readAll(preexistingSettings.autoStartPath());
+    expectTrue(QFile::exists(preexistingSettings.autoStartPath()), "legacy autostart entry migrates to netstats-live path");
+    expectTrue(!QFile::exists(legacyAutostartPath), "legacy autostart entry is removed after migration");
+    expectTrue(migratedAutostart.contains(QStringLiteral("Name=NetStats-Live\n")), "migrated autostart uses product name");
+    expectTrue(migratedAutostart.contains(QStringLiteral("Exec=\"/usr/bin/netstats-live\" --minimized\n")), "migrated autostart updates Exec binary");
+    expectTrue(migratedAutostart.contains(QStringLiteral("Icon=netstats-live\n")), "migrated autostart updates icon name");
+    expectTrue(!migratedAutostart.contains(QStringLiteral("nsl-linux")), "migrated autostart has no legacy product identifier");
+    expectTrue(writeText(legacyAutostartPath, QStringLiteral("[Desktop Entry]\nName=NSL-Linux\nExec=nsl-linux --minimized\n")), "duplicate legacy autostart desktop file recreated");
+    AppSettings duplicateAutostartSettings;
+    expectTrue(QFile::exists(duplicateAutostartSettings.autoStartPath()), "existing netstats-live autostart entry is preserved");
+    expectTrue(!QFile::exists(legacyAutostartPath), "duplicate legacy autostart entry is removed when new entry exists");
+    expectTrue(QFile::remove(newConfigPath), "remove preexisting config so copy migration can be tested");
 
     AppSettings settings;
-    expectEqual(settings.configPath(), QDir(QDir(tempConfig.path()).filePath(QStringLiteral("netstats-live"))).filePath(QStringLiteral("netstats-live.conf")), "config path uses netstats-live identity");
+    expectEqual(settings.configPath(), newConfigPath, "config path uses netstats-live identity");
     expectTrue(QFile::exists(settings.configPath()), "legacy nsl-linux config is copied to netstats-live path");
     AppConfig migrated = settings.load();
     expectTrue(migrated.autoMinimize, "legacy autoMinimize setting migrates");

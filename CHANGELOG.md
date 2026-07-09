@@ -9,7 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - **Breaking:** the product identity is now consistently `NetStats-Live` / `netstats-live`. The installed binary, desktop entry, icon name, window class, DBus service, and config path moved from the old `nsl-linux` names.
-- Settings now migrate once by copying `~/.config/nsl-linux/nsl-linux.conf` to `~/.config/netstats-live/netstats-live.conf` when the new config file does not already exist.
+- Settings now migrate once by copying `~/.config/nsl-linux/nsl-linux.conf` to `~/.config/netstats-live/netstats-live.conf` when the new config file does not already exist, and legacy autostart entries are rewritten to `netstats-live`.
+- Debian packages now declare `Breaks`, `Conflicts`, and `Replaces` for the old `nsl-linux` package name to avoid side-by-side stale launchers on upgrade.
 - Removed generated/development output directories from the tracked repository; release packages are generated artifacts and remain outside git.
 
 ## [0.1.0-alpha] - 2026-07-09

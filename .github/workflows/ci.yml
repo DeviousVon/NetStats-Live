@@ -81,8 +81,12 @@ jobs:
         run: |
           test -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
           test -f outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
-          sudo dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
-          sudo dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
+          sudo dpkg --dry-run --auto-deconfigure -i outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
+          sudo dpkg --dry-run --auto-deconfigure -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
+          test "$(dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Package)" = "netstats-live"
+          dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Breaks | grep -F 'nsl-linux (<< 0.2.0)'
+          dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Conflicts | grep -F 'nsl-linux (<< 0.2.0)'
+          dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Replaces | grep -F 'nsl-linux (<< 0.2.0)'
           dpkg-deb -c outputs/final/NetStats-Live_0.1.0_kde_amd64.deb | grep -F './usr/bin/netstats-live'
           dpkg-deb -c outputs/final/NetStats-Live_0.1.0_kde_amd64.deb | grep -F './usr/share/applications/netstats-live.desktop'
           dpkg-deb -c outputs/final/NetStats-Live_0.1.0_kde_amd64.deb | grep -F './usr/share/icons/hicolor/64x64/apps/netstats-live.png'

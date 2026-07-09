@@ -119,8 +119,8 @@ cpack --config build-generic/CPackConfig.cmake -G DEB
 Dry-run install check:
 
 ```bash
-dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
-dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
+dpkg --dry-run --auto-deconfigure -i outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
+dpkg --dry-run --auto-deconfigure -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
 ```
 
 ## Compatibility
