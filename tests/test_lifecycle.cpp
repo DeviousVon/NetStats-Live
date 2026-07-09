@@ -69,6 +69,8 @@ int main(int argc, char** argv) {
     expectEqual(rolled.monthKey, QStringLiteral("2026-07"), "load rolls to fake current month");
     expectEqual(rolled.rxMonth, std::uint64_t{0}, "new month rx starts at zero");
     expectEqual(rolled.txMonth, std::uint64_t{0}, "new month tx starts at zero");
+    expectEqual(rolled.lastRxMonth, std::uint64_t{12345}, "previous archived rx is available for Last Month display");
+    expectEqual(rolled.lastTxMonth, std::uint64_t{67890}, "previous archived tx is available for Last Month display");
 
     QSettings raw(settings.configPath(), QSettings::IniFormat);
     expectEqual(raw.value(QStringLiteral("history/2026-06/rxMonth")).toULongLong(), qulonglong{12345}, "old rx archived under history month bucket");
