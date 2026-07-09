@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 NAME
+// Copyright (C) 2026 DeviousVon
 
 #include "Collector.h"
 #include "Settings.h"
