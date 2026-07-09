@@ -1,0 +1,25 @@
+# Build outputs
+build/
+build-*/
+build*/
+_CPack_Packages/
+compile_commands.json
+*.deb
+
+# Generated release/output artifacts; keep README placeholders and visual fixtures.
+outputs/**
+!outputs/
+!outputs/**/
+!outputs/**/README.md
+!outputs/reports/visual/*.png
+
+# Local dependency/cache folders
+.deps/
+.cache/
+
+# Local editor and environment state
+*.user
+*.autosave
+.env
+.env.*
+!.env.example

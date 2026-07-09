@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 DeviousVon
+
+#include "Lifecycle.h"
+
+namespace nsl {
+
+bool shouldShowMainWindow(bool startMinimizedOption, bool autoMinimizeEnabled, bool trayAvailable) {
+    if (!trayAvailable) {
+        return true;
+    }
+    return !startMinimizedOption && !autoMinimizeEnabled;
+}
+
+bool shouldHideToTray(bool trayAvailable) {
+    return trayAvailable;
+}
+
+QString singleInstanceServiceName() {
+    return QStringLiteral("org.nsl_linux.NSL");
+}
+
+QString singleInstanceObjectPath() {
+    return QStringLiteral("/org/nsl_linux/MainWindow");
+}
+
+QString singleInstanceInterfaceName() {
+    return QStringLiteral("org.nsl_linux.NSL");
+}
+
+} // namespace nsl

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NSL-Linux
+GenericName=Network Monitor
+Comment=NetStat Live inspired network monitor for Linux
+Exec=nsl-linux
+Icon=nsl-linux
+Terminal=false
+Categories=Network;Monitor;Qt;
+StartupWMClass=nsl-linux
+X-KDE-Wayland-Interfaces=org_kde_plasma_window_management
