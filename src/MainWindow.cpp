@@ -46,8 +46,8 @@ QString hopText(const CollectorSnapshot& snapshot) {
 
 MainWindow::MainWindow(bool simulate, QWidget* parent)
     : QWidget(parent), contextMenu_(this), statisticsMenu_(tr("Statistics"), this), configMenu_(tr("Config"), this), interfaceMenu_(tr("Interface"), this), unitGroup_(this), interfaceGroup_(this) {
-    setObjectName(QStringLiteral("nsl-linux"));
-    setWindowTitle(QStringLiteral("nsl-linux"));
+    setObjectName(QStringLiteral("netstats-live"));
+    setWindowTitle(QStringLiteral("NetStats-Live"));
     setWindowFlag(Qt::FramelessWindowHint, true);
     setWindowFlag(Qt::Window, true);
     setAttribute(Qt::WA_OpaquePaintEvent);
@@ -348,7 +348,7 @@ void MainWindow::configureLayerShell() {
         if (auto* layerWindow = LayerShellQt::Window::get(windowHandle())) {
             layerWindow->setLayer(LayerShellQt::Window::LayerOverlay);
             layerWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
-            layerWindow->setScope(QStringLiteral("nsl-linux"));
+            layerWindow->setScope(QStringLiteral("netstats-live"));
         }
     }
 #endif
@@ -449,7 +449,7 @@ void MainWindow::paintEvent(QPaintEvent* event) {
     painter.drawLine(1, 1, width() - 2, 1);
     painter.setFont(PaneWidget::headerFont());
     painter.setPen(Theme::HeaderText);
-    painter.drawText(QRect(6, 0, width() - 12, TitleHeight), Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("nsl-linux"));
+    painter.drawText(QRect(6, 0, width() - 12, TitleHeight), Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("NetStats-Live"));
     painter.setPen(Theme::DimRuleLine);
     painter.drawLine(1, TitleHeight - 1, width() - 2, TitleHeight - 1);
     painter.setPen(Theme::Border);

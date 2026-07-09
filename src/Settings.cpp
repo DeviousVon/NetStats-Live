@@ -17,7 +17,22 @@ namespace {
 
 QString configDir() {
     const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    return QDir(base).filePath(QStringLiteral("nsl-linux"));
+    return QDir(base).filePath(QStringLiteral("netstats-live"));
+}
+
+QString legacyConfigPath() {
+    const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
+    return QDir(QDir(base).filePath(QStringLiteral("nsl-linux"))).filePath(QStringLiteral("nsl-linux.conf"));
+}
+
+void migrateLegacyConfigIfNeeded(const QString& settingsPath) {
+    if (QFile::exists(settingsPath)) {
+        return;
+    }
+    const QString legacyPath = legacyConfigPath();
+    if (QFile::exists(legacyPath)) {
+        QFile::copy(legacyPath, settingsPath);
+    }
 }
 
 QString boolKey(PaneId id) {
@@ -94,8 +109,9 @@ QString paneDisplayName(PaneId id) {
 }
 
 AppSettings::AppSettings()
-    : settingsPath_(QDir(configDir()).filePath(QStringLiteral("nsl-linux.conf"))) {
+    : settingsPath_(QDir(configDir()).filePath(QStringLiteral("netstats-live.conf"))) {
     QDir().mkpath(configDir());
+    migrateLegacyConfigIfNeeded(settingsPath_);
 }
 
 QString AppSettings::currentMonthKey() {
@@ -204,7 +220,7 @@ QString AppSettings::configPath() const {
 
 QString AppSettings::autoStartPath() const {
     const QString autostart = QDir(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)).filePath(QStringLiteral("autostart"));
-    return QDir(autostart).filePath(QStringLiteral("nsl-linux.desktop"));
+    return QDir(autostart).filePath(QStringLiteral("netstats-live.desktop"));
 }
 
 bool AppSettings::setAutoStart(bool enabled, const QString& executablePath) const {
@@ -225,13 +241,13 @@ bool AppSettings::setAutoStart(bool enabled, const QString& executablePath) cons
     QTextStream stream(&file);
     stream << "[Desktop Entry]\n"
            << "Type=Application\n"
-           << "Name=NSL-Linux\n"
-           << "Comment=AnalogX NetStat Live style network monitor for Linux\n"
+           << "Name=NetStats-Live\n"
+           << "Comment=Live network throughput and CPU monitor widget for Linux\n"
            << "Exec=" << quoteExecArgument(execPath) << " --minimized\n"
-           << "Icon=nsl-linux\n"
+           << "Icon=netstats-live\n"
            << "Terminal=false\n"
            << "Categories=Network;Monitor;Qt;\n"
-           << "StartupWMClass=nsl-linux\n"
+           << "StartupWMClass=netstats-live\n"
            << "X-KDE-autostart-after=panel\n";
     return file.commit();
 }

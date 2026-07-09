@@ -9,7 +9,7 @@
 
 Ignored by git:
 
-- `build/nsl-linux` — compiled application from verified local build.
+- `build/netstats-live` — compiled application from verified local build.
 - `build/nsl_core_tests` — pure core test binary.
 - `build/nsl_tray_tests` — tray visual-state/simulation test binary.
 - `build/nsl_lifecycle_tests` — lifecycle/settings/package-support test binary.
@@ -34,7 +34,7 @@ Ignored by git:
 - `tests/test_core.cpp`
 - `tests/test_tray_icon.cpp`
 - `tests/test_lifecycle.cpp`
-- `config/nsl-linux.desktop`
+- `config/netstats-live.desktop`
 
 ## Visual fidelity outputs
 
@@ -44,9 +44,9 @@ Ignored by git:
 
 ## Tray simulation / StatusNotifier evidence
 
-- Hidden runtime mode: `./build/nsl-linux --simulate --minimized`.
+- Hidden runtime mode: `./build/netstats-live --simulate --minimized`.
 - Test target: `build/nsl_tray_tests` / CTest test `nsl_tray_tests`.
-- Live KDE Wayland check: StatusNotifierWatcher listed an item with `Id`/`Title` `nsl-linux`; DBus `org.kde.StatusNotifierItem.Activate 0 0` and `ContextMenu 0 0` both returned exit 0 while simulate mode was running.
+- Live KDE Wayland check: StatusNotifierWatcher listed an item with `Id`/`Title` `netstats-live`; DBus `org.kde.StatusNotifierItem.Activate 0 0` and `ContextMenu 0 0` both returned exit 0 while simulate mode was running.
 
 
 ## Package outputs
@@ -55,11 +55,11 @@ Ignored by git:
 
 Package contents verified with `dpkg-deb --contents`:
 
-- `/usr/bin/nsl-linux`
-- `/usr/share/applications/nsl-linux.desktop`
-- `/usr/share/icons/hicolor/64x64/apps/nsl-linux.png`
-- `/usr/share/icons/hicolor/128x128/apps/nsl-linux.png`
-- `/usr/share/icons/hicolor/256x256/apps/nsl-linux.png`
+- `/usr/bin/netstats-live`
+- `/usr/share/applications/netstats-live.desktop`
+- `/usr/share/icons/hicolor/64x64/apps/netstats-live.png`
+- `/usr/share/icons/hicolor/128x128/apps/netstats-live.png`
+- `/usr/share/icons/hicolor/256x256/apps/netstats-live.png`
 
 
 ## QA reports
@@ -68,8 +68,8 @@ Package contents verified with `dpkg-deb --contents`:
 
 ## 2026-07-07 AnalogX cyan visual pass
 
-- `reports/visual/nsl-analogx-cyan-pass.png` — fresh `--screenshot` render after reworking palette, headers, labels, typography, width, and graph style.
-- `reports/visual/nsl-analogx-cyan-comparison.png` — crop of the supplied AnalogX reference next to the reworked render for visual comparison.
+- `generated visual pass artifact (not committed)` — fresh `--screenshot` render after reworking palette, headers, labels, typography, width, and graph style.
+- `generated visual comparison artifact (not committed)` — crop of the supplied AnalogX reference next to the reworked render for visual comparison.
 - Mechanical screenshot marker counts from the render: cyan 3328, brighter value cyan 848, olive 81, legacy bright green 0.
 
 ## 2026-07-07 dynamic graph scaling

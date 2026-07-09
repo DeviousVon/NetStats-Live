@@ -9,7 +9,7 @@ namespace nsl {
 
 TrayIcon::TrayIcon(QObject* parent)
     : QObject(parent) {
-    tray_.setToolTip(QStringLiteral("NSL-Linux"));
+    tray_.setToolTip(QStringLiteral("NetStats-Live"));
     renderer_.update(makeTrayVisualState(0, 0, -1));
     tray_.setIcon(renderer_.icon());
     connect(&tray_, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
@@ -41,7 +41,7 @@ void TrayIcon::updateFromSnapshot(const CollectorSnapshot& snapshot) {
     const QString activity = snapshot.lastActivityAgeMs < 0
         ? QStringLiteral("no activity yet")
         : QStringLiteral("last activity %1s ago").arg(snapshot.lastActivityAgeMs / 1000);
-    tray_.setToolTip(QStringLiteral("NSL-Linux\nDown %1  Up %2\n%3")
+    tray_.setToolTip(QStringLiteral("NetStats-Live\nDown %1  Up %2\n%3")
                          .arg(QString::fromStdString(formatRate(snapshot.rxRate, UnitMode::Bytes)),
                               QString::fromStdString(formatRate(snapshot.txRate, UnitMode::Bytes)),
                               activity));

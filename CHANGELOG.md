@@ -4,6 +4,14 @@ All notable changes to NetStats-Live for Linux are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses alpha release tags such as `v0.1.0-alpha`.
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking:** the product identity is now consistently `NetStats-Live` / `netstats-live`. The installed binary, desktop entry, icon name, window class, DBus service, and config path moved from the old `nsl-linux` names.
+- Settings now migrate once by copying `~/.config/nsl-linux/nsl-linux.conf` to `~/.config/netstats-live/netstats-live.conf` when the new config file does not already exist.
+- Removed generated/development output directories from the tracked repository; release packages are generated artifacts and remain outside git.
+
 ## [0.1.0-alpha] - 2026-07-09
 
 ### Added

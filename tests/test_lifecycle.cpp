@@ -51,8 +51,8 @@ int main(int argc, char** argv) {
     qputenv("NSL_FAKE_DATE", "2026-06-30");
 
     QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName(QStringLiteral("nsl-linux-test"));
-    QCoreApplication::setOrganizationName(QStringLiteral("NSL-Linux-Test"));
+    QCoreApplication::setApplicationName(QStringLiteral("netstats-live-test"));
+    QCoreApplication::setOrganizationName(QStringLiteral("NetStats-Live-Test"));
 
     using namespace nsl;
 
@@ -60,7 +60,23 @@ int main(int argc, char** argv) {
     qputenv("NSL_FAKE_DATE", "2026-07");
     expectEqual(AppSettings::currentMonthKey(), QStringLiteral("2026-07"), "NSL_FAKE_DATE yyyy-MM controls month key");
 
+    const QString legacyDir = QDir(tempConfig.path()).filePath(QStringLiteral("nsl-linux"));
+    expectTrue(QDir().mkpath(legacyDir), "legacy config directory created");
+    const QString legacyConfigPath = QDir(legacyDir).filePath(QStringLiteral("nsl-linux.conf"));
+    {
+        QSettings legacy(legacyConfigPath, QSettings::IniFormat);
+        legacy.setValue(QStringLiteral("config/autoMinimize"), true);
+        legacy.setValue(QStringLiteral("remote/target"), QStringLiteral("legacy.example"));
+        legacy.sync();
+    }
+
     AppSettings settings;
+    expectEqual(settings.configPath(), QDir(QDir(tempConfig.path()).filePath(QStringLiteral("netstats-live"))).filePath(QStringLiteral("netstats-live.conf")), "config path uses netstats-live identity");
+    expectTrue(QFile::exists(settings.configPath()), "legacy nsl-linux config is copied to netstats-live path");
+    AppConfig migrated = settings.load();
+    expectTrue(migrated.autoMinimize, "legacy autoMinimize setting migrates");
+    expectEqual(migrated.remoteTarget, QStringLiteral("legacy.example"), "legacy remote target migrates");
+
     qputenv("NSL_FAKE_DATE", "2026-06-30");
     settings.saveMonthlyTotals(QStringLiteral("2026-06"), 12345, 67890);
 
@@ -76,13 +92,14 @@ int main(int argc, char** argv) {
     expectEqual(raw.value(QStringLiteral("history/2026-06/rxMonth")).toULongLong(), qulonglong{12345}, "old rx archived under history month bucket");
     expectEqual(raw.value(QStringLiteral("history/2026-06/txMonth")).toULongLong(), qulonglong{67890}, "old tx archived under history month bucket");
 
-    const QString buildPath = QDir(tempConfig.path()).filePath(QStringLiteral("build dir/nsl-linux"));
+    const QString buildPath = QDir(tempConfig.path()).filePath(QStringLiteral("build dir/netstats-live"));
     expectTrue(settings.setAutoStart(true, buildPath), "autostart create succeeds");
     const QString autostartPath = settings.autoStartPath();
     expectTrue(QFile::exists(autostartPath), "autostart desktop file exists");
     const QString desktop = readAll(autostartPath);
     expectTrue(desktop.contains(QStringLiteral("X-KDE-autostart-after=panel\n")), "autostart waits until KDE panel/SNI host exists");
-    expectTrue(desktop.contains(QStringLiteral("Icon=nsl-linux\n")), "autostart uses packaged nsl-linux icon name");
+    expectTrue(desktop.contains(QStringLiteral("Name=NetStats-Live\n")), "autostart uses product name");
+    expectTrue(desktop.contains(QStringLiteral("Icon=netstats-live\n")), "autostart uses packaged netstats-live icon name");
     expectTrue(desktop.contains(QStringLiteral("Exec=\"") + buildPath + QStringLiteral("\" --minimized\n")), "autostart quotes build-dir Exec path and starts minimized");
     expectTrue(settings.setAutoStart(false, buildPath), "autostart remove succeeds");
     expectTrue(!QFile::exists(autostartPath), "autostart desktop file removed");
@@ -98,8 +115,12 @@ int main(int argc, char** argv) {
     expectTrue(!singleInstanceObjectPath().isEmpty(), "single-instance object path present");
 
     QTemporaryDir signalConfig;
-    const QString binaryPath = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("nsl-linux"));
-    expectTrue(QFile::exists(binaryPath), "nsl-linux binary exists beside lifecycle test");
+    expectEqual(singleInstanceServiceName(), QStringLiteral("io.github.DeviousVon.NetStatsLive"), "single-instance DBus service uses product identity");
+    expectEqual(singleInstanceObjectPath(), QStringLiteral("/io/github/DeviousVon/NetStatsLive/MainWindow"), "single-instance DBus object path uses product identity");
+    expectEqual(singleInstanceInterfaceName(), QStringLiteral("io.github.DeviousVon.NetStatsLive"), "single-instance DBus interface uses product identity");
+
+    const QString binaryPath = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("netstats-live"));
+    expectTrue(QFile::exists(binaryPath), "netstats-live binary exists beside lifecycle test");
     QProcess process;
     QProcessEnvironment processEnv = QProcessEnvironment::systemEnvironment();
     processEnv.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
@@ -114,7 +135,7 @@ int main(int argc, char** argv) {
         QThread::sleep(4);
         process.terminate();
         expectTrue(process.waitForFinished(10000), "SIGTERM exits app cleanly");
-        const QString signalConfigPath = QDir(signalConfig.path()).filePath(QStringLiteral("nsl-linux/nsl-linux.conf"));
+        const QString signalConfigPath = QDir(signalConfig.path()).filePath(QStringLiteral("netstats-live/netstats-live.conf"));
         expectTrue(QFile::exists(signalConfigPath), "SIGTERM writes config before exit");
         QSettings signalSettings(signalConfigPath, QSettings::IniFormat);
         const qulonglong rx = signalSettings.value(QStringLiteral("totals/rxMonth")).toULongLong();

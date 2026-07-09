@@ -187,8 +187,8 @@ int main(int argc, char** argv) {
     expectTrue(eased.maximum > 1150.0 && eased.maximum < 1250.0, "scale easing moves 20 percent toward target");
 
     QTemporaryDir screenshotDir;
-    const QString binaryPath = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("nsl-linux"));
-    expectTrue(QFile::exists(binaryPath), "nsl-linux binary exists beside visual theme test");
+    const QString binaryPath = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("netstats-live"));
+    expectTrue(QFile::exists(binaryPath), "netstats-live binary exists beside visual theme test");
     QProcess screenshotProcess;
     QProcessEnvironment screenshotEnv = QProcessEnvironment::systemEnvironment();
     screenshotEnv.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));

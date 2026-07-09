@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/DeviousVon/NetStats-Live/actions/workflows/ci.yml/badge.svg)](https://github.com/DeviousVon/NetStats-Live/actions/workflows/ci.yml)
 
-NetStats-Live for Linux (`nsl-linux`) is a small Qt6 desktop network monitor inspired by AnalogX NetStat Live. It shows local/remote network status, live incoming/outgoing throughput graphs, session totals, monthly totals, thread count, CPU use, and a traffic-aware tray icon.
+NetStats-Live for Linux (`netstats-live`) is a small Qt6 desktop network monitor inspired by AnalogX NetStat Live. It shows local/remote network status, live incoming/outgoing throughput graphs, session totals, monthly totals, thread count, CPU use, and a traffic-aware tray icon.
 
 This is a clean-room reimplementation for Linux. AnalogX NetStat Live is credited as the inspiration; this project does not reuse AnalogX code or original assets.
 
-![NetStats-Live screenshot](docs/nsl-linux-screenshot.png)
+![NetStats-Live screenshot](docs/netstats-live-screenshot.png)
 
 ## Status
 
@@ -22,7 +22,8 @@ This is a clean-room reimplementation for Linux. AnalogX NetStat Live is credite
 - Runtime-painted `QSystemTrayIcon` / StatusNotifierItem with cached TX/RX flash states and traffic-age indicator.
 - Right-click context menu with pane toggles, config toggles, interface selection, reset, minimize, and exit.
 - URL ClipCap support through Qt clipboard notifications plus a KDE Klipper DBus fallback.
-- QSettings INI persistence at `~/.config/nsl-linux/nsl-linux.conf`.
+- QSettings INI persistence at `~/.config/netstats-live/netstats-live.conf`.
+- One-time settings migration copies `~/.config/nsl-linux/nsl-linux.conf` to the new path if the new config file does not already exist.
 - Monthly transfer total archiving with calendar-month rollover.
 - Auto Start, Auto Minimize, single-instance activation over DBus, and optional KDE Wayland layer-shell support.
 
@@ -47,9 +48,9 @@ sudo apt install ./NetStats-Live_0.1.0_kde_amd64.deb
 
 The package installs:
 
-- `/usr/bin/nsl-linux`
-- `/usr/share/applications/nsl-linux.desktop`
-- `/usr/share/icons/hicolor/{64x64,128x128,256x256}/apps/nsl-linux.png`
+- `/usr/bin/netstats-live`
+- `/usr/share/applications/netstats-live.desktop`
+- `/usr/share/icons/hicolor/{64x64,128x128,256x256}/apps/netstats-live.png`
 
 Runtime notes:
 
@@ -86,13 +87,13 @@ ctest --test-dir build --output-on-failure
 Run:
 
 ```bash
-./build/nsl-linux
+./build/netstats-live
 ```
 
 Start hidden in the tray when a tray is available:
 
 ```bash
-./build/nsl-linux --minimized
+./build/netstats-live --minimized
 ```
 
 If no tray/status-notifier host is available, the app ignores `--minimized` and Auto Minimize and starts visible so it cannot become unreachable.
@@ -147,7 +148,7 @@ dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
 
 - The main window is frameless and draggable from the background using `QWindow::startSystemMove()`.
 - `QSystemTrayIcon` maps to KDE Plasma's StatusNotifierItem support.
-- Single-instance activation uses DBus. Launching `nsl-linux` again activates the existing window and exits.
+- Single-instance activation uses DBus. Launching `netstats-live` again activates the existing window and exits.
 - SIGTERM/SIGINT are bridged into the Qt event loop so totals/config are saved before exit. A hard crash/SIGKILL can lose at most the last 60 seconds because totals are flushed once per minute.
 - Always on Top changes are applied by a live hide/show cycle because Qt/Wayland window flags and layer-shell state need the surface to be recreated. This may briefly flicker but does not require a process restart.
 - Background clipboard access is Wayland-restricted. URL ClipCap uses normal Qt clipboard notifications when available and polls Klipper over DBus (`org.kde.klipper`, `/klipper`, `getClipboardContents`) every 2 seconds as a KDE fallback.
@@ -162,7 +163,7 @@ If Always on Top is not honored on KDE Wayland and the binary was built without 
 4. Match window class / resource class exactly:
 
    ```text
-   nsl-linux
+   netstats-live
    ```
 
 5. Add property **Keep above other windows**.
@@ -210,7 +211,7 @@ src/Settings.*            settings, autostart file, monthly total persistence
 src/ClipCap.*             clipboard URL capture and KDE Klipper fallback
 src/Core.*                parsing and formatting helpers
 tests/                    CTest unit/regression tests
-config/nsl-linux.desktop  desktop launcher
+config/netstats-live.desktop  desktop launcher
 assets/icons/             installed application icons
 docs/                     public docs, screenshot, and development history
 ```

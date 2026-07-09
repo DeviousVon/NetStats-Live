@@ -4,7 +4,7 @@ Bob supplied the first creation prompt on 2026-07-06.
 
 ## Supplied requirements
 
-Build a Linux desktop application called nsl-linux: a faithful C++20 / Qt6 Widgets clone of AnalogX NetStat Live v2.15 for Kubuntu KDE Plasma on Wayland, portable to other Linux desktops. Use custom-painted QPainter widgets, /proc collection, async ping/traceroute, runtime tray icon, context menus, QSettings persistence, URL ClipCap with Klipper DBus fallback, optional layer-shell-qt always-on-top, and build/link verification with -Wall -Wextra.
+Build a Linux desktop application called netstats-live: a faithful C++20 / Qt6 Widgets clone of AnalogX NetStat Live v2.15 for Kubuntu KDE Plasma on Wayland, portable to other Linux desktops. Use custom-painted QPainter widgets, /proc collection, async ping/traceroute, runtime tray icon, context menus, QSettings persistence, URL ClipCap with Klipper DBus fallback, optional layer-shell-qt always-on-top, and build/link verification with -Wall -Wextra.
 
 ## Source/reference inspected
 

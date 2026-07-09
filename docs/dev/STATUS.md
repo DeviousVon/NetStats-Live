@@ -7,7 +7,7 @@ First working implementation milestone is complete in the local workspace.
 Built artifact:
 
 ```text
-<repo>/build/nsl-linux
+<repo>/build/netstats-live
 ```
 
 ## Verification run
@@ -15,7 +15,7 @@ Built artifact:
 - `cmake -S . -B build -DCMAKE_PREFIX_PATH="$PWD/.deps/root/usr" -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON` — configured successfully with layer-shell-qt found from local extracted dev package.
 - `cmake --build build -j$(nproc)` — succeeded.
 - `ctest --test-dir build --output-on-failure` — 1/1 test passed.
-- `QT_QPA_PLATFORM=offscreen build/nsl-linux --help` — exit 0, showed CLI help.
+- `QT_QPA_PLATFORM=offscreen build/netstats-live --help` — exit 0, showed CLI help.
 - 20-second offscreen smoke/perf run: timeout exit expected; CPU rounded to 0%, max RSS ~35 MB.
 
 ## Dependency note
@@ -56,7 +56,7 @@ Implemented third-prompt tray verification work:
 - Added hidden `--simulate` mode that drives the Collector with deterministic synthetic traffic: rx-only burst, tx-only burst, bidirectional burst, then silence frames around 60s and 120s.
 - Split tray visual-state logic into testable code: activity bucket, TX/RX state mapping, 16/22/32px icon rendering, and renderer cache.
 - Added `nsl_tray_tests` to CTest. It verifies left/right flash mapping, cyan/yellow/red silence thresholds, no regeneration for unchanged visual state, 16px/22px legibility, and StatusNotifierItem activation mapping.
-- Verified on the live KDE Wayland session that `nsl-linux --simulate --minimized` registers a StatusNotifierItem with `Id`/`Title` `nsl-linux`; DBus `Activate` and `ContextMenu` calls both returned exit 0.
+- Verified on the live KDE Wayland session that `netstats-live --simulate --minimized` registers a StatusNotifierItem with `Id`/`Title` `netstats-live`; DBus `Activate` and `ContextMenu` calls both returned exit 0.
 
 
 ## 2026-07-07 lifecycle/package pass
@@ -65,7 +65,7 @@ Implemented fourth-prompt lifecycle and packaging work:
 
 - `NSL_FAKE_DATE` controls `AppSettings::currentMonthKey()` for tests.
 - Monthly totals rollover archives old values under `history/<YYYY-MM>/rxMonth` and `history/<YYYY-MM>/txMonth` and resets the active month bucket.
-- Auto Start creates/removes `~/.config/autostart/nsl-linux.desktop`, quoting build-dir paths and adding `X-KDE-autostart-after=panel`.
+- Auto Start creates/removes `~/.config/autostart/netstats-live.desktop`, quoting build-dir paths and adding `X-KDE-autostart-after=panel`.
 - Auto Minimize startup decision is factored/tested and still starts the app hidden with tray visible.
 - Single-instance DBus guard added; second launch calls `activateFromInstanceRequest` on the existing process and exits.
 - Added clean-room hicolor icons and CPack DEB packaging.
@@ -95,8 +95,8 @@ Report: `docs/dev/final-qa-2026-07-07.md`.
 
 - Supplied side-by-side screenshot showed the app was still too green and cramped. Updated the clean-room visual theme to match the original direction: centralized `Theme` palette, cyan/teal graph/value colors, dim warm gray-olive labels, centered section headers with side rules, spelled-out Current/Average/Max labels, larger graph values, wider 238 px window, and smoothed filled area graphs with no horizontal grid.
 - Added `nsl_visual_theme_tests` to CTest. It verifies palette constants, PaneWidget color routing, spelled graph labels, no legacy bright-green graph pixels, and smoothing behavior.
-- Screenshot artifacts: `reports/visual/nsl-analogx-cyan-pass.png` and comparison crop `reports/visual/nsl-analogx-cyan-comparison.png`.
-- Also isolated the lifecycle SIGTERM smoke from any installed/running `nsl-linux` instance by forcing an invalid per-test DBus session address.
+- Screenshot artifacts: `generated visual pass artifact (not committed)` and comparison crop `generated visual comparison artifact (not committed)`.
+- Also isolated the lifecycle SIGTERM smoke from any installed/running `netstats-live` instance by forcing an invalid per-test DBus session address.
 
 ## 2026-07-07 dynamic graph scaling
 

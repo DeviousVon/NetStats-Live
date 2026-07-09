@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=NSL-Linux
+Name=NetStats-Live
 GenericName=Network Monitor
-Comment=NetStat Live inspired network monitor for Linux
-Exec=nsl-linux
-Icon=nsl-linux
+Comment=Live network throughput and CPU monitor widget for Linux
+Exec=netstats-live
+Icon=netstats-live
 Terminal=false
 Categories=Network;Monitor;Qt;
-StartupWMClass=nsl-linux
+StartupWMClass=netstats-live
 X-KDE-Wayland-Interfaces=org_kde_plasma_window_management

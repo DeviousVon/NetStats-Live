@@ -1,8 +1,8 @@
-# Handoff — NSL-Linux
+# Handoff — NetStats-Live
 
 ## What this is
 
-`nsl-linux` is a C++20 / Qt6 Widgets clone of AnalogX NetStat Live for Linux, focused on Kubuntu KDE Plasma on Wayland and portable Linux desktops.
+`netstats-live` is a C++20 / Qt6 Widgets clone of AnalogX NetStat Live for Linux, focused on Kubuntu KDE Plasma on Wayland and portable Linux desktops.
 
 ## Current workspace
 
@@ -13,7 +13,7 @@
 ## Current build artifact
 
 ```text
-<repo>/build/nsl-linux
+<repo>/build/netstats-live
 ```
 
 ## Build normally
@@ -41,7 +41,7 @@ ctest --test-dir build --output-on-failure
 - CMake configure succeeded.
 - Build succeeded with `-Wall -Wextra -Wpedantic` and no compiler warnings in the final run.
 - CTest: `1/1 Test #1: nsl_core_tests ... Passed`.
-- `QT_QPA_PLATFORM=offscreen build/nsl-linux --help` exited 0.
+- `QT_QPA_PLATFORM=offscreen build/netstats-live --help` exited 0.
 - 20s offscreen smoke/perf run: CPU rounded to 0%, RSS about 35 MB. The timeout exit was expected because the GUI event loop keeps running.
 
 ## Known caveats
@@ -64,7 +64,7 @@ cd <repo> && git status --short
 The app now supports deterministic screenshot rendering:
 
 ```bash
-QT_QPA_PLATFORM=offscreen ./build/nsl-linux --screenshot outputs/reports/visual/nsl-linux.png
+QT_QPA_PLATFORM=offscreen ./build/netstats-live --screenshot /tmp/netstats-live-screenshot.png
 ```
 
 The screenshot mode seeds demo values, hides the Threads pane to match the AnalogX reference screenshot, prevents persistence writes, grabs the widget to PNG, and exits. The Threads pane remains implemented/toggleable in normal app use.
@@ -82,14 +82,14 @@ Implementation changed the main window width to match the 224px reference screen
 The app now has a hidden deterministic tray demo mode:
 
 ```bash
-./build/nsl-linux --simulate --minimized
+./build/netstats-live --simulate --minimized
 ```
 
 It feeds synthetic Collector snapshots in this sequence: rx-only burst, tx-only burst, bidirectional burst, cyan active silence just under 60s, yellow at 60s, and red at 120s. `--simulate` is hidden from `--help`.
 
 Tray visual logic is factored into `TrayIconVisual.*`; simulation frames live in `TraySimulation.*`. CTest includes `nsl_tray_tests` for TX/RX half mapping, activity triangle thresholds, cache churn avoidance, 16px/22px legibility, and SNI activation reason mapping.
 
-Live KDE Wayland verification registered an `nsl-linux` StatusNotifierItem and DBus `Activate` / `ContextMenu` method calls returned success.
+Live KDE Wayland verification registered a `netstats-live` StatusNotifierItem and DBus `Activate` / `ContextMenu` method calls returned success.
 
 
 ## Lifecycle/package pass notes
@@ -98,9 +98,9 @@ Lifecycle features implemented:
 
 - `NSL_FAKE_DATE` supports `YYYY-MM-DD` and `YYYY-MM` for month-rollover tests.
 - Monthly totals are archived to `history/<YYYY-MM>/rxMonth` and `history/<YYYY-MM>/txMonth`; active month totals reset on rollover.
-- Auto Start writes `~/.config/autostart/nsl-linux.desktop` with quoted current executable path, `--minimized`, `Icon=nsl-linux`, and `X-KDE-autostart-after=panel`.
+- Auto Start writes `~/.config/autostart/netstats-live.desktop` with quoted current executable path, `--minimized`, `Icon=netstats-live`, and `X-KDE-autostart-after=panel`.
 - Auto Minimize continues through startup decision helper `shouldShowMainWindow()`.
-- Single-instance guard uses DBus service `org.nsl_linux.NSL` and object `/org/nsl_linux/MainWindow`; second launch calls `activateFromInstanceRequest` and exits.
+- Single-instance guard uses DBus service `io.github.DeviousVon.NetStatsLive` and object `/io/github/DeviousVon/NetStatsLive/MainWindow`; second launch calls `activateFromInstanceRequest` and exits.
 - CPack generates `outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb`. The generated package is intentionally ignored by git.
 
 Recommended resume verification:
@@ -117,7 +117,7 @@ dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb
 
 ## Final QA pass notes
 
-Final QA found one defect: SIGTERM did not save totals/config. Fixed with a Unix signal pipe + `QSocketNotifier` in `main.cpp` and `MainWindow::shutdownForSignal()`. Added a lifecycle regression test that launches `build/nsl-linux --simulate --minimized`, sends SIGTERM, and verifies non-zero totals are written.
+Final QA found one defect: SIGTERM did not save totals/config. Fixed with a Unix signal pipe + `QSocketNotifier` in `main.cpp` and `MainWindow::shutdownForSignal()`. Added a lifecycle regression test that launches `build/netstats-live --simulate --minimized`, sends SIGTERM, and verifies non-zero totals are written.
 
 Other QA evidence lives in `docs/dev/final-qa-2026-07-07.md`:
 
@@ -137,7 +137,7 @@ dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb
 
 ## AnalogX cyan visual rework handoff — 2026-07-07
 
-Current visual direction is the user's supplied AnalogX screenshot, not earlier bright-green/Cur-Avg-Max guidance. The app now uses `src/Theme.h` as the palette source of truth: cyan graph fill/header, brighter cyan values, olive labels, dark background/rules, and cyan tray active state. Graph panes use spelled Current/Average/Max labels, larger bold value text, and smoothed filled area graphs. Fresh artifacts are under `reports/visual/nsl-analogx-cyan-pass.png` and `reports/visual/nsl-analogx-cyan-comparison.png`.
+Current visual direction is the user's supplied AnalogX screenshot, not earlier bright-green/Cur-Avg-Max guidance. The app now uses `src/Theme.h` as the palette source of truth: cyan graph fill/header, brighter cyan values, olive labels, dark background/rules, and cyan tray active state. Graph panes use spelled Current/Average/Max labels, larger bold value text, and smoothed filled area graphs. Fresh artifacts are under `generated visual pass artifact (not committed)` and `generated visual comparison artifact (not committed)`.
 
 ## Dynamic graph scaling handoff — 2026-07-07
 

@@ -6,12 +6,11 @@ _CPack_Packages/
 compile_commands.json
 *.deb
 
-# Generated release/output artifacts; keep README placeholders and visual fixtures.
-outputs/**
-!outputs/
-!outputs/**/
-!outputs/**/README.md
-!outputs/reports/visual/*.png
+# Generated release/output artifacts
+outputs/
+reports/
+archive/
+interface/
 
 # Local dependency/cache folders
 .deps/

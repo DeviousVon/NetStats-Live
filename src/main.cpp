@@ -10,6 +10,7 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDebug>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QSocketNotifier>
 #include <QTimer>
@@ -77,12 +78,13 @@ void drainSignalPipe() {
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    QCoreApplication::setApplicationName(QStringLiteral("nsl-linux"));
-    QCoreApplication::setOrganizationName(QStringLiteral("NSL-Linux"));
-    QApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("nsl-linux"), QIcon::fromTheme(QStringLiteral("network-workgroup"))));
+    QCoreApplication::setApplicationName(QStringLiteral("netstats-live"));
+    QCoreApplication::setOrganizationName(QStringLiteral("NetStats-Live"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("netstats-live"));
+    QApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("netstats-live"), QIcon::fromTheme(QStringLiteral("network-workgroup"))));
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("AnalogX NetStat Live style network monitor for Linux"));
+    parser.setApplicationDescription(QStringLiteral("Live network throughput and CPU monitor widget for Linux"));
     parser.addHelpOption();
     const QCommandLineOption minimizedOption(QStringLiteral("minimized"), QStringLiteral("Start hidden in the system tray"));
     const QCommandLineOption screenshotOption(QStringLiteral("screenshot"),

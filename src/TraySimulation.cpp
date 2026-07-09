@@ -27,7 +27,7 @@ std::vector<TraySimulationFrame> buildTraySimulationFrames() {
 
 void applyTraySimulationFrame(CollectorSnapshot& snapshot, const TraySimulationFrame& frame) {
     if (snapshot.hostname.isEmpty()) {
-        snapshot.hostname = QStringLiteral("nsl-linux-sim");
+        snapshot.hostname = QStringLiteral("netstats-live-sim");
     }
     if (snapshot.ipAddress.isEmpty()) {
         snapshot.ipAddress = QStringLiteral("203.0.113.42");

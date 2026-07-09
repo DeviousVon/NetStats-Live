@@ -17,15 +17,15 @@ bool shouldHideToTray(bool trayAvailable) {
 }
 
 QString singleInstanceServiceName() {
-    return QStringLiteral("org.nsl_linux.NSL");
+    return QStringLiteral("io.github.DeviousVon.NetStatsLive");
 }
 
 QString singleInstanceObjectPath() {
-    return QStringLiteral("/org/nsl_linux/MainWindow");
+    return QStringLiteral("/io/github/DeviousVon/NetStatsLive/MainWindow");
 }
 
 QString singleInstanceInterfaceName() {
-    return QStringLiteral("org.nsl_linux.NSL");
+    return QStringLiteral("io.github.DeviousVon.NetStatsLive");
 }
 
 } // namespace nsl
