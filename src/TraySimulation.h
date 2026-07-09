@@ -13,6 +13,7 @@
 
 namespace nsl {
 
+// Deterministic traffic frame used by --simulate for tray QA.
 struct TraySimulationFrame {
     QString label;
     std::uint64_t rxDelta = 0;

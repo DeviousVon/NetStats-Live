@@ -11,6 +11,7 @@
 
 namespace nsl {
 
+// Bridges Collector snapshots into a QSystemTrayIcon/StatusNotifierItem.
 class TrayIcon : public QObject {
     Q_OBJECT
 public:

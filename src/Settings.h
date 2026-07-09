@@ -31,6 +31,7 @@ constexpr int PaneCount = static_cast<int>(PaneId::Count);
 QString paneConfigKey(PaneId id);
 QString paneDisplayName(PaneId id);
 
+// Persisted user preferences plus active and previous-month transfer totals.
 struct AppConfig {
     std::array<bool, PaneCount> panes{};
     bool autoMinimize = false;
@@ -48,6 +49,7 @@ struct AppConfig {
     std::uint64_t lastTxMonth = 0;
 };
 
+// Owns QSettings persistence and autostart .desktop file generation.
 class AppSettings {
 public:
     AppSettings();

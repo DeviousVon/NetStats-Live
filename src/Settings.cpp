@@ -32,6 +32,8 @@ void archiveMonthlyTotals(QSettings& settings, const QString& monthKey, std::uin
     settings.setValue(QStringLiteral("history/%1/txMonth").arg(monthKey), QVariant::fromValue<qulonglong>(txBytes));
 }
 
+// "Last Month" is derived from archived history so a calendar rollover can
+// reset active totals without losing the just-finished month in the UI.
 QString previousMonthKey(const QString& monthKey) {
     const QDate firstOfMonth = QDate::fromString(monthKey + QStringLiteral("-01"), QStringLiteral("yyyy-MM-dd"));
     return firstOfMonth.isValid() ? firstOfMonth.addMonths(-1).toString(QStringLiteral("yyyy-MM")) : QString();

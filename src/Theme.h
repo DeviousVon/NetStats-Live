@@ -9,6 +9,7 @@
 
 namespace nsl {
 
+// Central clean-room visual palette and font choices for the AnalogX-style UI.
 struct Theme {
     inline static const QColor Background{0x05, 0x05, 0x05};
     inline static const QColor PanelBackground{0x08, 0x08, 0x08};

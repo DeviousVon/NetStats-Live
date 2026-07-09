@@ -12,12 +12,14 @@ namespace nsl {
 
 enum class UnitMode { Bytes, Bits };
 
+// Raw byte counters parsed from /proc/net/dev.
 struct NetworkCounters {
     std::string name;
     std::uint64_t rxBytes = 0;
     std::uint64_t txBytes = 0;
 };
 
+// Aggregate CPU tick fields from the first /proc/stat "cpu" line.
 struct CpuTimes {
     std::uint64_t user = 0;
     std::uint64_t nice = 0;

@@ -9,6 +9,7 @@
 
 namespace nsl {
 
+// Watches clipboard URLs and emits their host as the remote target.
 class ClipCap : public QObject {
     Q_OBJECT
 public:

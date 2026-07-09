@@ -326,6 +326,8 @@ void MainWindow::applyPaneVisibility() {
 }
 
 void MainWindow::applyAlwaysOnTop() {
+    // On Wayland, Qt window flags and layer-shell state are tied to the native
+    // surface; hide/show recreates it so the setting takes effect immediately.
     const bool wasVisible = isVisible();
     if (wasVisible) {
         hide();
@@ -340,6 +342,8 @@ void MainWindow::applyAlwaysOnTop() {
 
 void MainWindow::configureLayerShell() {
 #ifdef NSL_HAS_LAYER_SHELL
+    // Layer-shell gives KDE Wayland a stronger always-on-top/overlay path; other
+    // desktops fall back to Qt::WindowStaysOnTopHint above.
     if (config_.alwaysOnTop && windowHandle() != nullptr) {
         if (auto* layerWindow = LayerShellQt::Window::get(windowHandle())) {
             layerWindow->setLayer(LayerShellQt::Window::LayerOverlay);
@@ -383,6 +387,7 @@ void MainWindow::resetStatistics() {
 }
 
 void MainWindow::minimizeRequested() {
+    // Do not hide the only reachable window on desktops without a tray host.
     if (shouldHideToTray(tray_.isAvailable())) {
         hide();
     } else {

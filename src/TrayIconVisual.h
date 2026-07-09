@@ -21,6 +21,7 @@ enum class TrayActivityBucket {
     Red,
 };
 
+// Minimal state needed to redraw the runtime tray glyph.
 struct TrayVisualState {
     bool txActive = false;
     bool rxActive = false;
@@ -35,6 +36,7 @@ QColor trayActivityColor(TrayActivityBucket bucket);
 QImage renderTrayIconImage(const TrayVisualState& state, QSize size);
 bool trayActivationTogglesWindow(QSystemTrayIcon::ActivationReason reason);
 
+// Caches rendered tray icons so unchanged traffic state does not churn pixmaps.
 class TrayIconRenderer {
 public:
     bool update(const TrayVisualState& state);

@@ -22,6 +22,8 @@ namespace {
 
 int signalPipeFds[2] = {-1, -1};
 
+// Keep Unix signal handling async-signal-safe: write one byte here, then let
+// QSocketNotifier do the real shutdown/persistence work inside the Qt loop.
 void handleUnixSignal(int) {
     const char byte = 'q';
     if (signalPipeFds[1] != -1) {
