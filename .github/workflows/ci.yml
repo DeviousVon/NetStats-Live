@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feature/first-working-milestone]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-kde:
+    name: KDE/layer-shell build and tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake \
+            qt6-base-dev qmake6 qmake6-bin \
+            libqt6dbus6 libqt6network6 libqt6widgets6 \
+            liblayershellqtinterface-dev \
+            iputils-ping traceroute
+      - name: Configure
+        run: cmake -S . -B build-kde -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=ON
+      - name: Build
+        run: cmake --build build-kde -j"$(nproc)"
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build-kde --output-on-failure
+
+  build-test-generic:
+    name: Generic no-layer-shell build and tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake \
+            qt6-base-dev qmake6 qmake6-bin \
+            libqt6dbus6 libqt6network6 libqt6widgets6 \
+            iputils-ping traceroute
+      - name: Configure
+        run: cmake -S . -B build-generic -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=OFF
+      - name: Build
+        run: cmake --build build-generic -j"$(nproc)"
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build-generic --output-on-failure
+
+  package-smoke:
+    name: Debian package smoke test
+    runs-on: ubuntu-24.04
+    needs: [build-test-kde, build-test-generic]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake \
+            qt6-base-dev qmake6 qmake6-bin \
+            libqt6dbus6 libqt6network6 libqt6widgets6 \
+            liblayershellqtinterface-dev \
+            iputils-ping traceroute
+      - name: Build KDE package
+        run: |
+          cmake -S . -B build-kde -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=ON
+          cmake --build build-kde -j"$(nproc)"
+          cpack --config build-kde/CPackConfig.cmake -G DEB
+      - name: Build generic package
+        run: |
+          cmake -S . -B build-generic -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=OFF
+          cmake --build build-generic -j"$(nproc)"
+          cpack --config build-generic/CPackConfig.cmake -G DEB
+      - name: Smoke-test packages
+        run: |
+          test -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
+          test -f outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
+          sudo dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
+          sudo dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-packages
+          path: outputs/final/NetStats-Live_0.1.0_*_amd64.deb
