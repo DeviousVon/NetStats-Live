@@ -5,8 +5,15 @@
 
 namespace nsl {
 
-bool shouldShowMainWindow(bool startMinimizedOption, bool autoMinimizeEnabled) {
+bool shouldShowMainWindow(bool startMinimizedOption, bool autoMinimizeEnabled, bool trayAvailable) {
+    if (!trayAvailable) {
+        return true;
+    }
     return !startMinimizedOption && !autoMinimizeEnabled;
+}
+
+bool shouldHideToTray(bool trayAvailable) {
+    return trayAvailable;
 }
 
 QString singleInstanceServiceName() {

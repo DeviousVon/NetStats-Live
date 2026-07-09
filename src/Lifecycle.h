@@ -7,7 +7,8 @@
 
 namespace nsl {
 
-bool shouldShowMainWindow(bool startMinimizedOption, bool autoMinimizeEnabled);
+bool shouldShowMainWindow(bool startMinimizedOption, bool autoMinimizeEnabled, bool trayAvailable);
+bool shouldHideToTray(bool trayAvailable);
 QString singleInstanceServiceName();
 QString singleInstanceObjectPath();
 QString singleInstanceInterfaceName();

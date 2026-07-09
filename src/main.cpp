@@ -9,6 +9,7 @@
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QDebug>
 #include <QIcon>
 #include <QSocketNotifier>
 #include <QTimer>
@@ -135,7 +136,11 @@ int main(int argc, char* argv[]) {
         return QApplication::exec();
     }
 
-    if (nsl::shouldShowMainWindow(parser.isSet(minimizedOption), window.autoMinimizeEnabled())) {
+    const bool trayAvailable = window.trayAvailable();
+    if (!trayAvailable) {
+        qWarning("System tray is not available; starting visible and using normal window minimize instead of tray hide.");
+    }
+    if (nsl::shouldShowMainWindow(parser.isSet(minimizedOption), window.autoMinimizeEnabled(), trayAvailable)) {
         window.show();
     }
     return QApplication::exec();
