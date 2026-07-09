@@ -6,7 +6,7 @@
 - Binary/project ID: `nsl-linux`
 - Meaning: NetStat Live for Linux
 - Category: software / Linux desktop utility
-- Workspace: `/home/bob/projects/nsl-linux`
+- Workspace: `<repo>`
 
 ## Purpose
 
@@ -14,7 +14,7 @@ Build a Linux desktop application called nsl-linux: a faithful C++20 / Qt6 Widge
 
 ## Target platform
 
-Primary target: KubuntuClaw / Kubuntu KDE Plasma on Wayland. Secondary target: any normal Linux desktop with Qt6 Widgets and `/proc`.
+Primary target: Kubuntu/KDE Plasma on Wayland. Secondary target: any normal Linux desktop with Qt6 Widgets and `/proc`.
 
 ## Visual direction
 

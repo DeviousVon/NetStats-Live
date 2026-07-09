@@ -7,7 +7,7 @@ First working implementation milestone is complete in the local workspace.
 Built artifact:
 
 ```text
-/home/bob/projects/nsl-linux/build/nsl-linux
+<repo>/build/nsl-linux
 ```
 
 ## Verification run
@@ -69,7 +69,7 @@ Implemented fourth-prompt lifecycle and packaging work:
 - Auto Minimize startup decision is factored/tested and still starts the app hidden with tray visible.
 - Single-instance DBus guard added; second launch calls `activateFromInstanceRequest` on the existing process and exits.
 - Added clean-room hicolor icons and CPack DEB packaging.
-- Package artifact: `outputs/final/nsl-linux_0.1.0_amd64.deb` (ignored generated artifact).
+- Package artifact: `outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb` (ignored generated artifact).
 
 Verification added/updated:
 
@@ -89,7 +89,7 @@ QA evidence:
 - SIGKILL/crash direct smoke after 65 seconds: config retained flushed totals, bounding hard-crash loss to the existing 60-second flush interval.
 - `ctest --test-dir build --output-on-failure`: 3/3 passed after the fix.
 
-Report: `docs/qa/final-qa-2026-07-07.md`.
+Report: `docs/dev/final-qa-2026-07-07.md`.
 
 ## 2026-07-07 AnalogX cyan visual rework
 

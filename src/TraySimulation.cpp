@@ -30,7 +30,7 @@ void applyTraySimulationFrame(CollectorSnapshot& snapshot, const TraySimulationF
         snapshot.hostname = QStringLiteral("nsl-linux-sim");
     }
     if (snapshot.ipAddress.isEmpty()) {
-        snapshot.ipAddress = QStringLiteral("10.0.0.42");
+        snapshot.ipAddress = QStringLiteral("203.0.113.42");
     }
     snapshot.selectedInterface = QStringLiteral("SIM");
     snapshot.interfaces = {QStringLiteral("SIM")};

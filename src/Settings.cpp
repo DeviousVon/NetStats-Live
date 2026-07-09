@@ -55,10 +55,10 @@ QString resolvedExecutablePath(const QString& executablePath) {
     return found.isEmpty() ? executablePath : found;
 }
 
-QString quoteExecToken(QString token) {
-    token.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
-    token.replace(QLatin1Char('"'), QStringLiteral("\\\""));
-    return QStringLiteral("\"%1\"").arg(token);
+QString quoteExecArgument(QString argument) {
+    argument.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    argument.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    return QStringLiteral("\"%1\"").arg(argument);
 }
 
 } // namespace
@@ -227,7 +227,7 @@ bool AppSettings::setAutoStart(bool enabled, const QString& executablePath) cons
            << "Type=Application\n"
            << "Name=NSL-Linux\n"
            << "Comment=AnalogX NetStat Live style network monitor for Linux\n"
-           << "Exec=" << quoteExecToken(execPath) << " --minimized\n"
+           << "Exec=" << quoteExecArgument(execPath) << " --minimized\n"
            << "Icon=nsl-linux\n"
            << "Terminal=false\n"
            << "Categories=Network;Monitor;Qt;\n"

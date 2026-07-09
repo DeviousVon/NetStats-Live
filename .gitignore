@@ -1,8 +1,18 @@
+# Build outputs
+build/
+build-*/
 build*/
+_CPack_Packages/
+compile_commands.json
+*.deb
+
+# Local dependency/cache folders
 .deps/
+.cache/
+
+# Local editor and environment state
 *.user
 *.autosave
-.cache/
-compile_commands.json
-_CPack_Packages/
-*.deb
+.env
+.env.*
+!.env.example
