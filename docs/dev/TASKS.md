@@ -57,7 +57,7 @@
 - [x] Verify SIGKILL/crash loses no more than the latest unflushed 60-second interval.
 - [x] Tighten Always on Top reapplication with a live hide/show cycle for Wayland/layer-shell state.
 - [x] Document Wayland limitations vs the original Windows app.
-- [x] Add final QA report under `docs/qa/final-qa-2026-07-07.md`.
+- [x] Add final QA report under `docs/dev/final-qa-2026-07-07.md`.
 
 ## 2026-07-07 AnalogX cyan visual rework
 

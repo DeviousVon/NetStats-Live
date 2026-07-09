@@ -64,7 +64,7 @@ int main() {
     expectNear(cpuLoadPercent(before, after), 50.0, 0.001, "CPU percent from proc/stat deltas");
 
     expectEqual(parseLoadAvgThreadTotal("0.12 0.15 0.20 2/1370 12345\n"), 1370, "parse thread total from /proc/loadavg");
-    expectEqual(parseTracerouteHopCount(" 1  192.168.1.1  1.0 ms\n 2  10.0.0.1  2.0 ms\n"), 2, "parse final traceroute hop");
+    expectEqual(parseTracerouteHopCount(" 1  198.51.100.1  1.0 ms\n 2  203.0.113.1  2.0 ms\n"), 2, "parse final traceroute hop");
 
     if (failures != 0) {
         std::cerr << failures << " test failure(s)\n";

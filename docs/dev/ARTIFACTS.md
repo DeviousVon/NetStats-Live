@@ -51,7 +51,7 @@ Ignored by git:
 
 ## Package outputs
 
-- `outputs/final/nsl-linux_0.1.0_amd64.deb` — generated CPack Debian package for Ubuntu 24.04+; ignored by git as a build artifact.
+- `outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb` — generated CPack Debian package for Ubuntu 24.04+; ignored by git as a build artifact.
 
 Package contents verified with `dpkg-deb --contents`:
 
@@ -64,7 +64,7 @@ Package contents verified with `dpkg-deb --contents`:
 
 ## QA reports
 
-- `docs/qa/final-qa-2026-07-07.md` — final real-traffic/performance, SIGTERM/SIGKILL, and Wayland limitation QA report.
+- `docs/dev/final-qa-2026-07-07.md` — final real-traffic/performance, SIGTERM/SIGKILL, and Wayland limitation QA report.
 
 ## 2026-07-07 AnalogX cyan visual pass
 

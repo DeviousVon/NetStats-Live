@@ -7,13 +7,13 @@
 ## Current workspace
 
 ```text
-/home/bob/projects/nsl-linux
+<repo>
 ```
 
 ## Current build artifact
 
 ```text
-/home/bob/projects/nsl-linux/build/nsl-linux
+<repo>/build/nsl-linux
 ```
 
 ## Build normally
@@ -56,7 +56,7 @@ ctest --test-dir build --output-on-failure
 Continue with Bob's next creation prompt from this workspace. First recommended command:
 
 ```bash
-cd /home/bob/projects/nsl-linux && git status --short
+cd <repo> && git status --short
 ```
 
 ## Visual fidelity pass notes
@@ -101,17 +101,17 @@ Lifecycle features implemented:
 - Auto Start writes `~/.config/autostart/nsl-linux.desktop` with quoted current executable path, `--minimized`, `Icon=nsl-linux`, and `X-KDE-autostart-after=panel`.
 - Auto Minimize continues through startup decision helper `shouldShowMainWindow()`.
 - Single-instance guard uses DBus service `org.nsl_linux.NSL` and object `/org/nsl_linux/MainWindow`; second launch calls `activateFromInstanceRequest` and exits.
-- CPack generates `outputs/final/nsl-linux_0.1.0_amd64.deb`. The generated package is intentionally ignored by git.
+- CPack generates `outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb`. The generated package is intentionally ignored by git.
 
 Recommended resume verification:
 
 ```bash
-cd /home/bob/projects/nsl-linux
+cd <repo>
 cmake -S . -B build -DCMAKE_PREFIX_PATH="$PWD/.deps/root/usr" -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 cpack --config build/CPackConfig.cmake -G DEB
-dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
+dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb
 ```
 
 
@@ -119,7 +119,7 @@ dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
 
 Final QA found one defect: SIGTERM did not save totals/config. Fixed with a Unix signal pipe + `QSocketNotifier` in `main.cpp` and `MainWindow::shutdownForSignal()`. Added a lifecycle regression test that launches `build/nsl-linux --simulate --minimized`, sends SIGTERM, and verifies non-zero totals are written.
 
-Other QA evidence lives in `docs/qa/final-qa-2026-07-07.md`:
+Other QA evidence lives in `docs/dev/final-qa-2026-07-07.md`:
 
 - Wayland real-traffic soak stayed below 1% CPU and had 0 KiB RSS delta.
 - SIGKILL after 65 seconds retained flushed totals; hard crashes can lose at most the last 60 seconds.
@@ -128,11 +128,11 @@ Other QA evidence lives in `docs/qa/final-qa-2026-07-07.md`:
 Resume verification:
 
 ```bash
-cd /home/bob/projects/nsl-linux
+cd <repo>
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 cpack --config build/CPackConfig.cmake -G DEB
-dpkg --dry-run -i outputs/final/nsl-linux_0.1.0_amd64.deb
+dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_<flavor>_amd64.deb
 ```
 
 ## AnalogX cyan visual rework handoff — 2026-07-07
