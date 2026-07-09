@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 NAME
+
 #include "Collector.h"
 #include "Settings.h"
 #include "TraySimulation.h"

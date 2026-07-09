@@ -4,6 +4,10 @@ NSL-Linux (`nsl-linux`) is a compact Linux desktop network monitor inspired by A
 
 This is a clean-room reimplementation. AnalogX NetStat Live is credited as the inspiration; NSL-Linux does not reuse AnalogX code or original assets. Reference screenshots saved in this repository are for development comparison only and are not installed into the application package.
 
+## License
+
+NSL-Linux is licensed under the GNU General Public License v3.0 or later. It is free to use, modify, and redistribute, provided derivative works are also released under GPLv3.
+
 ## Features
 
 - C++20, Qt6 Widgets, CMake, no QML.
