@@ -12,6 +12,8 @@ This is a clean-room reimplementation for Linux. AnalogX NetStat Live is credite
 
 `v0.1.0-alpha` is the first public alpha. It is usable on the primary target environment, but not yet broadly validated across every Linux desktop shell.
 
+**Download:** get the Debian packages from the [v0.1.0-alpha release page](https://github.com/DeviousVon/NetStats-Live/releases/tag/v0.1.0-alpha).
+
 ## Features
 
 - C++20, Qt6 Widgets, CMake, no QML.
@@ -29,7 +31,7 @@ This is a clean-room reimplementation for Linux. AnalogX NetStat Live is credite
 
 ## Install from a Debian package
 
-Download one of the release `.deb` files from the GitHub release page:
+Download one of the release `.deb` files from the [GitHub release page](https://github.com/DeviousVon/NetStats-Live/releases/tag/v0.1.0-alpha):
 
 - `NetStats-Live_0.1.0_kde_amd64.deb` — KDE/Wayland-focused build with layer-shell support when available.
 - `NetStats-Live_0.1.0_generic_amd64.deb` — generic Qt6 build without a layer-shell dependency.
