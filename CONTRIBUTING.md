@@ -6,7 +6,9 @@ By contributing code, documentation, tests, or other project material, you agree
 
 ## Development environment
 
-Ubuntu/Kubuntu 24.04+ is the reference development target.
+Generic builds are validated on Ubuntu 22.04, Ubuntu 24.04, and Debian 12.
+The genuine KDE feature/package gate uses a distribution that provides Qt 6
+LayerShellQt and/or KF6 WindowSystem.
 
 Install common dependencies:
 
@@ -15,49 +17,54 @@ sudo apt update
 sudo apt install -y \
   build-essential cmake \
   qt6-base-dev qmake6 qmake6-bin \
-  libqt6dbus6 libqt6network6 libqt6widgets6 \
+  libgl-dev libopengl-dev \
   iputils-ping traceroute
 ```
 
-For the KDE/Wayland layer-shell build, also install:
+For the KDE/Wayland build, install the **Qt 6** variants available on the target
+distribution:
 
 ```bash
-sudo apt install -y liblayershellqtinterface-dev
+sudo apt install -y liblayershellqtinterface-dev libkf6windowsystem-dev
 ```
+
+Ubuntu 22.04 and Ubuntu 24.04 provide a Qt 5 LayerShellQt development package;
+that package is deliberately rejected and does not satisfy the KDE gate.
 
 ## Build and test
 
-Generic source build:
+Generic source build and complete test suite:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=OFF -DUSE_KWINDOWSYSTEM=OFF
 cmake --build build -j"$(nproc)"
 ctest --test-dir build --output-on-failure
 ```
 
-KDE/layer-shell package build:
+Deterministic generic and KDE packages:
 
 ```bash
-cmake -S . -B build-kde -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=ON
-cmake --build build-kde -j"$(nproc)"
-ctest --test-dir build-kde --output-on-failure
-cpack --config build-kde/CPackConfig.cmake -G DEB
+scripts/build-debs.sh --flavor generic --reproducible
+scripts/build-debs.sh --flavor kde --reproducible
 ```
 
-Generic package build:
+The KDE command must fail when its requested features degrade to generic. The
+script validates exact installed contents, generated dependencies, AppStream
+and desktop metadata, Qt major, RPATH/RUNPATH, private paths, dry-run install,
+and byte-for-byte reproducibility.
+
+Sanitizer build:
 
 ```bash
-cmake -S . -B build-generic -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=OFF
-cmake --build build-generic -j"$(nproc)"
-ctest --test-dir build-generic --output-on-failure
-cpack --config build-generic/CPackConfig.cmake -G DEB
-```
-
-Package smoke check:
-
-```bash
-dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
-dpkg --dry-run -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
+cmake -S . -B build-sanitize -DCMAKE_BUILD_TYPE=Debug \
+  -DUSE_LAYER_SHELL=OFF -DUSE_KWINDOWSYSTEM=OFF \
+  -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+  -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+cmake --build build-sanitize --parallel 2
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+QT_QPA_PLATFORM=offscreen \
+  ctest --test-dir build-sanitize --output-on-failure
 ```
 
 ## Code layout
@@ -73,6 +80,9 @@ tests/test_core.cpp       parser/formatter unit tests
 tests/test_tray_icon.cpp  tray visual-state and rendering tests
 tests/test_lifecycle.cpp  settings, rollover, startup, and lifecycle tests
 tests/test_visual_theme.cpp visual-regression guardrails
+tests/test_main_window.cpp real-window minimize/restore, position, DBus-slot, and activation-token tests
+config/netstats-live.metainfo.xml AppStream identity and release metadata
+scripts/build-debs.sh deterministic package build and verification authority
 ```
 
 ## Style notes
@@ -88,6 +98,9 @@ tests/test_visual_theme.cpp visual-regression guardrails
 
 - [ ] `cmake --build ...` succeeds.
 - [ ] `ctest --test-dir ... --output-on-failure` passes.
-- [ ] If packaging changed, both KDE and generic `.deb` builds were smoke-tested with `dpkg --dry-run`.
+- [ ] Generic and KDE feature detection was checked; KDE did not silently degrade to generic.
+- [ ] `scripts/build-debs.sh --flavor ... --reproducible` passed for every advertised package flavor.
+- [ ] `shellcheck`, AppStream, desktop-file, package-content, dependency, Qt-major, RPATH/RUNPATH, and dry-run gates passed.
+- [ ] ASan/UBSan and the complete CTest suite passed.
 - [ ] Public docs were updated for changed behavior or limitations.
 - [ ] No credentials, private hostnames/IPs, or local absolute paths were committed.

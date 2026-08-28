@@ -14,9 +14,23 @@
 #include <QActionGroup>
 #include <QMap>
 #include <QMenu>
+#include <QMessageBox>
+#include <QPointer>
+#include <QRect>
+#include <QSet>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
+
+class QLabel;
+class QKeyEvent;
+class QToolButton;
+
+#ifdef NSL_HAS_LAYER_SHELL
+namespace LayerShellQt {
+class Window;
+}
+#endif
 
 namespace nsl {
 
@@ -24,7 +38,7 @@ namespace nsl {
 class MainWindow : public QWidget {
     Q_OBJECT
 public:
-    explicit MainWindow(bool simulate = false, QWidget* parent = nullptr);
+    explicit MainWindow(bool simulate = false, QWidget* parent = nullptr, bool persistenceEnabled = true);
     ~MainWindow() override;
     bool autoMinimizeEnabled() const;
     bool trayAvailable() const;
@@ -34,11 +48,13 @@ public:
 
 public Q_SLOTS:
     Q_SCRIPTABLE void activateFromInstanceRequest();
+    Q_SCRIPTABLE void activateFromInstanceRequestWithToken(const QString& activationToken);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
 
@@ -48,15 +64,23 @@ private Q_SLOTS:
     void resetStatistics();
     void minimizeRequested();
     void toggleVisibleFromTray();
+    void toggleVisibleFromTrayWithToken(const QString& activationToken);
+    void ensureTrayReachability();
 
 private:
     void createPanes();
     void createMenus();
+    void createSemanticControls();
+    void updateSemanticControlGeometry();
     void applyPaneVisibility();
     void applyAlwaysOnTop();
     void configureLayerShell();
-    void saveConfig();
-    void saveTotals();
+    void restoreFromTray();
+    StorageResult reconcileLatestMonthlySnapshot(bool userVisible = true);
+    StorageResult saveConfig(bool userVisible = true);
+    StorageResult saveTotals(bool userVisible = true);
+    void reportStorageError(const StorageResult& result, bool userVisible = true);
+    QRect minimizeButtonRect() const;
     QString totalText(std::uint64_t bytes) const;
     QWidget* paneWidget(PaneId id) const;
 
@@ -73,6 +97,12 @@ private:
     QActionGroup unitGroup_;
     QActionGroup interfaceGroup_;
     QMap<PaneId, QAction*> paneActions_;
+    QLabel* titleLabel_ = nullptr;
+    QToolButton* minimizeButton_ = nullptr;
+    QPointer<QWidget> focusBeforeMinimize_;
+#ifdef NSL_HAS_LAYER_SHELL
+    QPointer<LayerShellQt::Window> layerShellWindow_;
+#endif
 
     TextPane* localPane_ = nullptr;
     TextPane* remotePane_ = nullptr;
@@ -85,7 +115,13 @@ private:
 
     CollectorSnapshot latestSnapshot_;
     QTimer totalsFlushTimer_;
+    QTimer trayAvailabilityTimer_;
+    QPointer<QMessageBox> storageErrorMessage_;
+    QSet<QString> reportedStorageErrors_;
+    StorageResult storageAuthorityError_;
     bool persistenceEnabled_ = true;
+    bool storageAuthorityTrusted_ = true;
+    bool shuttingDown_ = false;
 };
 
 } // namespace nsl

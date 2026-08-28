@@ -4,10 +4,15 @@
 #pragma once
 
 #include "Collector.h"
+#include "DBusMenu.h"
+#include "StatusNotifierItem.h"
 #include "TrayIconVisual.h"
 
 #include <QObject>
+#include <QPointer>
 #include <QSystemTrayIcon>
+
+#include <memory>
 
 namespace nsl {
 
@@ -22,11 +27,17 @@ public:
     int iconRegenerationCount() const;
 
 Q_SIGNALS:
-    void toggleRequested();
+    void toggleRequested(const QString& activationToken);
 
 private:
-    QSystemTrayIcon tray_;
+    void synchronizeSystemTrayFallback();
+
+    StatusNotifierItem statusNotifier_;
+    DBusMenu dbusMenu_;
+    std::unique_ptr<QSystemTrayIcon> systemTrayFallback_;
+    QPointer<QMenu> contextMenu_;
     TrayIconRenderer renderer_;
+    QString tooltip_ = QStringLiteral("NetStats-Live");
 };
 
 } // namespace nsl

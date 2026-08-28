@@ -4,7 +4,10 @@
 #pragma once
 
 #include <QClipboard>
+#include <QDBusPendingCallWatcher>
+#include <QDBusServiceWatcher>
 #include <QObject>
+#include <QPointer>
 #include <QTimer>
 
 namespace nsl {
@@ -30,7 +33,10 @@ private:
 
     bool enabled_ = false;
     bool klipperAvailable_ = false;
+    quint64 requestGeneration_ = 0;
     QString lastSeenUrl_;
+    QDBusServiceWatcher klipperWatcher_;
+    QPointer<QDBusPendingCallWatcher> klipperCall_;
     QTimer klipperTimer_;
 };
 

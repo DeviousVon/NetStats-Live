@@ -136,10 +136,13 @@ double normalizeGraphSample(double sample, const GraphScaleRange& range) {
 }
 
 GraphPane::GraphPane(QString title, GraphValueMode mode, QWidget* parent)
-    : PaneWidget(std::move(title), 92, parent), mode_(mode) {}
+    : PaneWidget(std::move(title), 92, parent), mode_(mode) {
+    updateAccessibleDescription();
+}
 
 void GraphPane::setUnitMode(UnitMode mode) {
     unitMode_ = mode;
+    updateAccessibleDescription();
     update();
 }
 
@@ -150,6 +153,7 @@ void GraphPane::pushSample(double value) {
         samples_.erase(samples_.begin(), samples_.begin() + static_cast<long>(samples_.size() - MaxSamples));
     }
     maximumSeen_ = std::max(maximumSeen_, clipped);
+    updateAccessibleDescription();
     update();
 }
 
@@ -158,6 +162,7 @@ void GraphPane::resetGraph() {
     maximumSeen_ = 0.0;
     scaleRange_ = {};
     scaleInitialized_ = false;
+    updateAccessibleDescription();
     update();
 }
 
@@ -179,6 +184,12 @@ double GraphPane::average() const {
     }
     const double total = std::accumulate(samples_.begin(), samples_.end(), 0.0);
     return total / static_cast<double>(samples_.size());
+}
+
+void GraphPane::updateAccessibleDescription() {
+    const double current = samples_.empty() ? 0.0 : samples_.back();
+    setAccessibleDescription(tr("Current %1; Average %2; Maximum %3")
+                                 .arg(formatValue(current), formatValue(average()), formatValue(maximumSeen_)));
 }
 
 void GraphPane::paintContent(QPainter& painter, const QRect& contentRect) {
