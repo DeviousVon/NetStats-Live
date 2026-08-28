@@ -6,6 +6,10 @@
 #include "Lifecycle.h"
 #include "Theme.h"
 
+#ifdef NSL_HAS_KWINDOWSYSTEM
+#include <KWindowSystem>
+#endif
+
 #ifdef NSL_HAS_LAYER_SHELL
 #include <LayerShellQt/Window>
 #endif
@@ -14,10 +18,19 @@
 #include <QCloseEvent>
 #include <QContextMenuEvent>
 #include <QCoreApplication>
+#include <QDebug>
+#include <QGuiApplication>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QScreen>
+#include <QSignalBlocker>
+#include <QToolButton>
 #include <QWindow>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 
@@ -26,6 +39,7 @@ namespace {
 
 constexpr int WindowWidth = 238;
 constexpr int TitleHeight = 18;
+constexpr int MinimizeButtonWidth = 18;
 
 std::size_t paneIndex(PaneId id) {
     return static_cast<std::size_t>(static_cast<int>(id));
@@ -44,23 +58,49 @@ QString hopText(const CollectorSnapshot& snapshot) {
 
 } // namespace
 
-MainWindow::MainWindow(bool simulate, QWidget* parent)
-    : QWidget(parent), contextMenu_(this), statisticsMenu_(tr("Statistics"), this), configMenu_(tr("Config"), this), interfaceMenu_(tr("Interface"), this), unitGroup_(this), interfaceGroup_(this) {
+MainWindow::MainWindow(bool simulate, QWidget* parent, bool persistenceEnabled)
+    : QWidget(parent), settings_(persistenceEnabled), contextMenu_(this), statisticsMenu_(tr("Statistics"), this),
+      configMenu_(tr("Config"), this), interfaceMenu_(tr("Interface"), this), unitGroup_(this),
+      interfaceGroup_(this), persistenceEnabled_(persistenceEnabled) {
     setObjectName(QStringLiteral("netstats-live"));
     setWindowTitle(QStringLiteral("NetStats-Live"));
+    setAccessibleName(QStringLiteral("NetStats-Live network monitor"));
+    setAccessibleDescription(tr("Live network throughput, transfer totals, thread count, and CPU activity"));
+    setFocusPolicy(Qt::StrongFocus);
     setWindowFlag(Qt::FramelessWindowHint, true);
     setWindowFlag(Qt::Window, true);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setFixedWidth(WindowWidth);
 
-    config_ = settings_.load();
+    StorageResult loadStorage;
+    if (persistenceEnabled_) {
+        const AppConfigLoadResult loaded = settings_.load();
+        config_ = loaded.config;
+        loadStorage = loaded.storage;
+        storageAuthorityTrusted_ = settings_.storageAuthorityResult().ok && loaded.storage.ok;
+        storageAuthorityError_ = settings_.storageAuthorityResult();
+        if (!loaded.storage.ok) {
+            if (!storageAuthorityError_.error.isEmpty()) {
+                storageAuthorityError_.error += QLatin1Char('\n');
+            }
+            storageAuthorityError_.ok = false;
+            storageAuthorityError_.error += loaded.storage.error;
+        }
+    } else {
+        config_.panes.fill(true);
+        config_.monthKey = AppSettings::currentMonthKey();
+    }
     createPanes();
     createMenus();
+    createSemanticControls();
     applyPaneVisibility();
     applyAlwaysOnTop();
+    reportStorageError(settings_.initializationResult());
+    reportStorageError(loadStorage);
 
     tray_.setContextMenu(&contextMenu_);
-    connect(&tray_, &TrayIcon::toggleRequested, this, &MainWindow::toggleVisibleFromTray);
+    connect(&tray_, &TrayIcon::toggleRequested,
+            this, &MainWindow::toggleVisibleFromTrayWithToken);
     connect(&collector_, &Collector::updated, this, &MainWindow::updateFromCollector);
     connect(&collector_, &Collector::interfaceFallbackToAll, this, [this]() {
         config_.selectedInterface = QStringLiteral("ALL");
@@ -72,9 +112,16 @@ MainWindow::MainWindow(bool simulate, QWidget* parent)
         saveConfig();
     });
 
-    totalsFlushTimer_.setInterval(60000);
-    connect(&totalsFlushTimer_, &QTimer::timeout, this, &MainWindow::saveTotals);
-    totalsFlushTimer_.start();
+    if (persistenceEnabled_ && storageAuthorityTrusted_) {
+        totalsFlushTimer_.setInterval(60000);
+        connect(&totalsFlushTimer_, &QTimer::timeout, this, [this]() {
+            saveTotals();
+        });
+        totalsFlushTimer_.start();
+    }
+    trayAvailabilityTimer_.setInterval(2000);
+    connect(&trayAvailabilityTimer_, &QTimer::timeout, this, &MainWindow::ensureTrayReachability);
+    trayAvailabilityTimer_.start();
 
     clipCap_.setEnabled(config_.urlClipCap && !simulate);
     if (simulate) {
@@ -84,14 +131,19 @@ MainWindow::MainWindow(bool simulate, QWidget* parent)
     }
 
     if (!config_.windowPos.isNull()) {
-        move(config_.windowPos);
+        QList<QRect> screenGeometries;
+        for (QScreen* screen : QGuiApplication::screens()) {
+            screenGeometries.append(screen->availableGeometry());
+        }
+        move(visibleWindowPosition(config_.windowPos, size(), screenGeometries));
     }
 }
 
 MainWindow::~MainWindow() {
     if (persistenceEnabled_) {
-        saveTotals();
-        saveConfig();
+        shuttingDown_ = true;
+        saveTotals(false);
+        saveConfig(false);
     }
 }
 
@@ -109,8 +161,9 @@ void MainWindow::setPersistenceEnabled(bool enabled) {
 
 void MainWindow::shutdownForSignal() {
     if (persistenceEnabled_) {
-        saveTotals();
-        saveConfig();
+        shuttingDown_ = true;
+        saveTotals(false);
+        saveConfig(false);
     }
     QCoreApplication::quit();
 }
@@ -125,8 +178,16 @@ void MainWindow::populateScreenshotDemoData() {
 
     localPane_->setRows({{tr("Name"), tr("Local Machine")}, {tr("IP"), tr("x.x.x.x")}, {tr("Device"), tr("All TCP/IP Devices")}});
     remotePane_->setRows({{tr("Name"), tr("Disabled")}, {tr("IP"), tr("--")}, {tr("Ping"), tr("--")}});
-    incomingTotalsPane_->setColumns({{tr("Last Reboot"), tr("3.9MB")}, {tr("This Month"), tr("3.9MB")}, {tr("Last Month"), tr("0B")}});
-    outgoingTotalsPane_->setColumns({{tr("Last Reboot"), tr("1.0MB")}, {tr("This Month"), tr("1.0MB")}, {tr("Last Month"), tr("0B")}});
+    constexpr double MiB = 1024.0 * 1024.0;
+    const auto bytesFromMiB = [](double value) {
+        return static_cast<std::uint64_t>(value * MiB);
+    };
+    incomingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(bytesFromMiB(344873.0))},
+                                     {tr("This Month"), totalText(bytesFromMiB(367601.4))},
+                                     {tr("Last Month"), totalText(0)}});
+    outgoingTotalsPane_->setColumns({{tr("Last Reboot"), totalText(bytesFromMiB(185440.4))},
+                                     {tr("This Month"), totalText(bytesFromMiB(187633.1))},
+                                     {tr("Last Month"), totalText(0)}});
 
     incomingPane_->resetGraph();
     outgoingPane_->resetGraph();
@@ -176,7 +237,7 @@ void MainWindow::createPanes() {
     layout_ = new QVBoxLayout(this);
     layout_->setContentsMargins(1, TitleHeight, 1, 1);
     layout_->setSpacing(0);
-    layout_->setSizeConstraint(QLayout::SetFixedSize);
+    layout_->setSizeConstraint(QLayout::SetNoConstraint);
 
     localPane_ = new TextPane(QStringLiteral("Local"), 67, this);
     remotePane_ = new TextPane(QStringLiteral("Remote"), 67, this);
@@ -197,7 +258,39 @@ void MainWindow::createPanes() {
     outgoingPane_->setUnitMode(config_.unitMode);
 }
 
+void MainWindow::createSemanticControls() {
+    titleLabel_ = new QLabel(this);
+    titleLabel_->setObjectName(QStringLiteral("title-label"));
+    titleLabel_->setAccessibleName(QStringLiteral("NetStats-Live"));
+    titleLabel_->setFocusPolicy(Qt::NoFocus);
+    titleLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    titleLabel_->setStyleSheet(QStringLiteral("background: transparent;"));
+
+    minimizeButton_ = new QToolButton(this);
+    minimizeButton_->setObjectName(QStringLiteral("minimize-button"));
+    minimizeButton_->setAccessibleName(tr("Minimize NetStats-Live"));
+    minimizeButton_->setFocusPolicy(Qt::StrongFocus);
+    minimizeButton_->setCursor(Qt::PointingHandCursor);
+    minimizeButton_->setStyleSheet(QStringLiteral(
+        "QToolButton { background: transparent; border: none; }"
+        "QToolButton:focus { border: 1px solid #00a8a8; }"));
+    connect(minimizeButton_, &QToolButton::clicked, this, &MainWindow::minimizeRequested);
+    updateSemanticControlGeometry();
+}
+
+void MainWindow::updateSemanticControlGeometry() {
+    if (titleLabel_ != nullptr) {
+        titleLabel_->setGeometry(QRect(6, 0, width() - MinimizeButtonWidth - 10, TitleHeight));
+        titleLabel_->raise();
+    }
+    if (minimizeButton_ != nullptr) {
+        minimizeButton_->setGeometry(minimizeButtonRect());
+        minimizeButton_->raise();
+    }
+}
+
 void MainWindow::createMenus() {
+    contextMenu_.setObjectName(QStringLiteral("main-context-menu"));
     contextMenu_.clear();
     statisticsMenu_.clear();
     configMenu_.clear();
@@ -228,10 +321,56 @@ void MainWindow::createMenus() {
     QAction* autoStart = configMenu_.addAction(tr("Auto Start"));
     autoStart->setCheckable(true);
     autoStart->setChecked(config_.autoStart);
-    connect(autoStart, &QAction::toggled, this, [this](bool checked) {
-        config_.autoStart = checked;
-        settings_.setAutoStart(checked, QCoreApplication::applicationFilePath());
-        saveConfig();
+    connect(autoStart, &QAction::toggled, this, [this, autoStart](bool checked) {
+        if (!storageAuthorityTrusted_) {
+            const QSignalBlocker blocker(autoStart);
+            autoStart->setChecked(config_.autoStart);
+            reportStorageError(storageAuthorityError_);
+            return;
+        }
+        const QString executablePath = QCoreApplication::applicationFilePath();
+        AutoStartSnapshot priorAutoStart;
+        const StorageResult snapshotResult = settings_.snapshotAutoStart(priorAutoStart);
+        if (!snapshotResult.ok) {
+            const QSignalBlocker blocker(autoStart);
+            autoStart->setChecked(config_.autoStart);
+            reportStorageError(snapshotResult);
+            return;
+        }
+        const StorageResult autostartResult = settings_.setAutoStart(checked, executablePath, priorAutoStart);
+        if (!autostartResult.ok) {
+            const StorageResult rollbackResult = settings_.restoreAutoStart(priorAutoStart);
+            const QSignalBlocker blocker(autoStart);
+            autoStart->setChecked(config_.autoStart);
+            reportStorageError(autostartResult);
+            reportStorageError(rollbackResult);
+            return;
+        }
+
+        AppConfig updatedConfig = config_;
+        updatedConfig.autoStart = checked;
+        updatedConfig.windowPos = pos();
+        const StorageResult configResult = settings_.saveConfig(updatedConfig);
+        if (!configResult.ok) {
+            const StorageResult rollbackResult = settings_.restoreAutoStart(priorAutoStart);
+            const QSignalBlocker blocker(autoStart);
+            autoStart->setChecked(config_.autoStart);
+            reportStorageError(configResult);
+            reportStorageError(rollbackResult);
+            return;
+        }
+        const StorageResult commitResult = settings_.commitAutoStart(priorAutoStart);
+        if (!commitResult.ok) {
+            const StorageResult configRollback = settings_.saveConfig(config_);
+            const StorageResult autostartRollback = settings_.restoreAutoStart(priorAutoStart);
+            const QSignalBlocker blocker(autoStart);
+            autoStart->setChecked(config_.autoStart);
+            reportStorageError(commitResult);
+            reportStorageError(configRollback);
+            reportStorageError(autostartRollback);
+            return;
+        }
+        config_ = updatedConfig;
     });
 
     QAction* clipCap = configMenu_.addAction(tr("URL ClipCap"));
@@ -317,25 +456,46 @@ void MainWindow::applyPaneVisibility() {
             height += pane->height();
         }
         if (auto it = paneActions_.find(id); it != paneActions_.end()) {
+            const QSignalBlocker blocker(it.value());
             it.value()->setChecked(visible);
         }
     }
     setFixedSize(WindowWidth, height);
+    updateSemanticControlGeometry();
+    configureLayerShell();
     updateGeometry();
     update();
 }
 
 void MainWindow::applyAlwaysOnTop() {
     // On Wayland, Qt window flags and layer-shell state are tied to the native
-    // surface; hide/show recreates it so the setting takes effect immediately.
+    // surface; destroy/recreate establishes a new shell-role authority.
     const bool wasVisible = isVisible();
+    const bool wasMinimized = isMinimized();
+    const QPoint priorPosition = pos();
     if (wasVisible) {
         hide();
     }
+#ifdef NSL_HAS_LAYER_SHELL
+    if (!layerShellWindow_.isNull()) {
+        delete layerShellWindow_.data();
+        layerShellWindow_.clear();
+    }
+#endif
+    if (QWindow* handle = windowHandle()) {
+        handle->destroy();
+    }
     setWindowFlag(Qt::WindowStaysOnTopHint, config_.alwaysOnTop);
     if (wasVisible) {
-        show();
-        raise();
+        if (wasMinimized) {
+            showMinimized();
+        } else {
+            show();
+        }
+        move(priorPosition);
+        if (config_.alwaysOnTop) {
+            raise();
+        }
     }
     configureLayerShell();
 }
@@ -345,7 +505,22 @@ void MainWindow::configureLayerShell() {
     // Layer-shell gives KDE Wayland a stronger always-on-top/overlay path; other
     // desktops fall back to Qt::WindowStaysOnTopHint above.
     if (config_.alwaysOnTop && windowHandle() != nullptr) {
-        if (auto* layerWindow = LayerShellQt::Window::get(windowHandle())) {
+        if (layerShellWindow_.isNull()) {
+            layerShellWindow_ = LayerShellQt::Window::get(windowHandle());
+        }
+        if (auto* layerWindow = layerShellWindow_.data()) {
+            LayerShellQt::Window::Anchors anchors;
+            anchors.setFlag(LayerShellQt::Window::AnchorTop);
+            anchors.setFlag(LayerShellQt::Window::AnchorLeft);
+            layerWindow->setAnchors(anchors);
+            layerWindow->setDesiredSize(size());
+            layerWindow->setExclusiveZone(0);
+            if (QScreen* screen = windowHandle()->screen()) {
+                const QRect screenGeometry = screen->geometry();
+                const int left = std::max(0, pos().x() - screenGeometry.left());
+                const int top = std::max(0, pos().y() - screenGeometry.top());
+                layerWindow->setMargins(QMargins(left, top, 0, 0));
+            }
             layerWindow->setLayer(LayerShellQt::Window::LayerOverlay);
             layerWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
             layerWindow->setScope(QStringLiteral("netstats-live"));
@@ -356,14 +531,7 @@ void MainWindow::configureLayerShell() {
 
 void MainWindow::updateFromCollector(const CollectorSnapshot& snapshot) {
     latestSnapshot_ = snapshot;
-    if (!config_.monthKey.isEmpty() && config_.monthKey != snapshot.monthKey) {
-        settings_.saveMonthlyTotals(config_.monthKey, config_.rxMonth, config_.txMonth);
-        config_.lastRxMonth = config_.rxMonth;
-        config_.lastTxMonth = config_.txMonth;
-    }
-    config_.rxMonth = snapshot.rxMonth;
-    config_.txMonth = snapshot.txMonth;
-    config_.monthKey = snapshot.monthKey;
+    reconcileLatestMonthlySnapshot();
     config_.remoteTarget = snapshot.remoteTarget == QStringLiteral("n/a") ? QString() : snapshot.remoteTarget;
 
     localPane_->setRows({{tr("Name"), snapshot.hostname}, {tr("IP"), snapshot.ipAddress}, {tr("Device"), snapshot.selectedInterface}});
@@ -387,37 +555,179 @@ void MainWindow::resetStatistics() {
 }
 
 void MainWindow::minimizeRequested() {
-    // Do not hide the only reachable window on desktops without a tray host.
-    if (shouldHideToTray(tray_.isAvailable())) {
-        hide();
-    } else {
-        showMinimized();
+    focusBeforeMinimize_ = QApplication::focusWidget();
+    if (persistenceEnabled_) {
+        saveConfig();
     }
+    showMinimized();
 }
 
 void MainWindow::toggleVisibleFromTray() {
-    if (isVisible()) {
+    toggleVisibleFromTrayWithToken(QString());
+}
+
+void MainWindow::toggleVisibleFromTrayWithToken(const QString& activationToken) {
+    const bool exposed = windowHandle() != nullptr && windowHandle()->isExposed();
+    const TrayToggleAction action = trayToggleAction(isVisible(), isMinimized(), exposed);
+    withActivationToken(activationToken, [this, action]() {
+        switch (action) {
+        case TrayToggleAction::Minimize:
+            minimizeRequested();
+            break;
+        case TrayToggleAction::Restore:
+            restoreFromTray();
+            break;
+        case TrayToggleAction::PlatformRestorePending:
+#ifdef NSL_HAS_KWINDOWSYSTEM
+            // Plasma clears Qt's minimized bit before emitting tray activation,
+            // while KWin still owns a minimized surface. The KDE API restores that
+            // surface without remapping it, so its compositor position is retained.
+            KWindowSystem::activateWindow(windowHandle());
+#else
+            // Generic Qt cannot reverse the Wayland state desynchronization. Remap
+            // as a reachability fallback; the compositor may choose a new position.
+            hide();
+            restoreFromTray();
+#endif
+            break;
+        }
+    });
+}
+
+void MainWindow::ensureTrayReachability() {
+    const bool exposed = windowHandle() != nullptr && windowHandle()->isExposed();
+    if (shouldRestoreForTrayLoss(tray_.isAvailable(), isVisible(), isMinimized(), exposed)) {
         hide();
-    } else {
-        show();
+        showNormal();
         raise();
         activateWindow();
     }
 }
 
 void MainWindow::activateFromInstanceRequest() {
-    show();
+    activateFromInstanceRequestWithToken(QString());
+}
+
+void MainWindow::activateFromInstanceRequestWithToken(const QString& activationToken) {
+    const bool exposed = windowHandle() != nullptr && windowHandle()->isExposed();
+#ifdef NSL_HAS_KWINDOWSYSTEM
+    constexpr bool NativeActivationAvailable = true;
+#else
+    constexpr bool NativeActivationAvailable = false;
+#endif
+
+    const bool hasActivationToken = !activationToken.isEmpty();
+    const InstanceActivationAction action = instanceActivationAction(
+        exposed, NativeActivationAvailable, hasActivationToken);
+    withActivationToken(activationToken, [this, action]() {
+        if (action == InstanceActivationAction::Remap) {
+            // A tokenless DBus/CLI request cannot unminimize a desynchronized
+            // Wayland surface. Remapping is the reliable reachability fallback.
+            hide();
+            showNormal();
+            raise();
+            activateWindow();
+            return;
+        }
+        restoreFromTray();
+    });
+}
+
+void MainWindow::restoreFromTray() {
+    showNormal();
+#ifdef NSL_HAS_KWINDOWSYSTEM
+    KWindowSystem::activateWindow(windowHandle());
+#else
     raise();
     activateWindow();
+#endif
+    QTimer::singleShot(0, this, [this]() {
+        QWidget* target = focusBeforeMinimize_.data();
+        if (target != nullptr && target->isEnabled() && target->focusPolicy() != Qt::NoFocus) {
+            target->setFocus(Qt::ActiveWindowFocusReason);
+        } else {
+            setFocus(Qt::ActiveWindowFocusReason);
+        }
+    });
 }
 
-void MainWindow::saveConfig() {
+StorageResult MainWindow::saveConfig(bool userVisible) {
+    if (!persistenceEnabled_) {
+        return {};
+    }
+    if (!storageAuthorityTrusted_) {
+        reportStorageError(storageAuthorityError_, userVisible);
+        return storageAuthorityError_;
+    }
     config_.windowPos = pos();
-    settings_.saveConfig(config_);
+    const StorageResult result = settings_.saveConfig(config_);
+    reportStorageError(result, userVisible);
+    return result;
 }
 
-void MainWindow::saveTotals() {
-    settings_.saveMonthlyTotals(config_.monthKey, config_.rxMonth, config_.txMonth);
+StorageResult MainWindow::reconcileLatestMonthlySnapshot(bool userVisible) {
+    if (!persistenceEnabled_ || !storageAuthorityTrusted_ || latestSnapshot_.monthKey.isEmpty()) {
+        return storageAuthorityTrusted_ ? StorageResult{} : storageAuthorityError_;
+    }
+    if (!config_.monthKey.isEmpty() && config_.monthKey != latestSnapshot_.monthKey) {
+        const StorageResult rolloverResult =
+            settings_.saveMonthlyTotals(config_.monthKey, config_.rxMonth, config_.txMonth);
+        reportStorageError(rolloverResult, userVisible);
+        if (!rolloverResult.ok) {
+            return rolloverResult;
+        }
+        config_.lastRxMonth = config_.rxMonth;
+        config_.lastTxMonth = config_.txMonth;
+    }
+    config_.rxMonth = latestSnapshot_.rxMonth;
+    config_.txMonth = latestSnapshot_.txMonth;
+    config_.monthKey = latestSnapshot_.monthKey;
+    return {};
+}
+
+StorageResult MainWindow::saveTotals(bool userVisible) {
+    if (!persistenceEnabled_) {
+        return {};
+    }
+    if (!storageAuthorityTrusted_) {
+        reportStorageError(storageAuthorityError_, userVisible);
+        return storageAuthorityError_;
+    }
+    const StorageResult reconciliationResult = reconcileLatestMonthlySnapshot(userVisible);
+    if (!reconciliationResult.ok) {
+        return reconciliationResult;
+    }
+    const StorageResult result = settings_.saveMonthlyTotals(config_.monthKey, config_.rxMonth, config_.txMonth);
+    reportStorageError(result, userVisible);
+    return result;
+}
+
+void MainWindow::reportStorageError(const StorageResult& result, bool userVisible) {
+    if (result.ok || result.error.isEmpty()) {
+        return;
+    }
+    qWarning().noquote() << result.error;
+    if (!userVisible || shuttingDown_ || reportedStorageErrors_.contains(result.error)) {
+        return;
+    }
+    reportedStorageErrors_.insert(result.error);
+    if (storageErrorMessage_.isNull()) {
+        storageErrorMessage_ = new QMessageBox(QMessageBox::Warning,
+                                               tr("NetStats-Live could not save a setting"),
+                                               result.error,
+                                               QMessageBox::Ok,
+                                               this);
+        storageErrorMessage_->setObjectName(QStringLiteral("storage-error-message"));
+        storageErrorMessage_->setWindowModality(Qt::NonModal);
+        storageErrorMessage_->setAttribute(Qt::WA_DeleteOnClose);
+    } else {
+        storageErrorMessage_->setText(result.error);
+    }
+    storageErrorMessage_->show();
+}
+
+QRect MainWindow::minimizeButtonRect() const {
+    return QRect(width() - MinimizeButtonWidth, 0, MinimizeButtonWidth, TitleHeight);
 }
 
 QString MainWindow::totalText(std::uint64_t bytes) const {
@@ -449,7 +759,10 @@ void MainWindow::paintEvent(QPaintEvent* event) {
     painter.drawLine(1, 1, width() - 2, 1);
     painter.setFont(PaneWidget::headerFont());
     painter.setPen(Theme::HeaderText);
-    painter.drawText(QRect(6, 0, width() - 12, TitleHeight), Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("NetStats-Live"));
+    painter.drawText(QRect(6, 0, width() - MinimizeButtonWidth - 10, TitleHeight), Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("NetStats-Live"));
+    const QRect minimizeRect = minimizeButtonRect();
+    painter.drawLine(minimizeRect.left() + 5, minimizeRect.center().y() + 3,
+                     minimizeRect.right() - 5, minimizeRect.center().y() + 3);
     painter.setPen(Theme::DimRuleLine);
     painter.drawLine(1, TitleHeight - 1, width() - 2, TitleHeight - 1);
     painter.setPen(Theme::Border);
@@ -458,6 +771,11 @@ void MainWindow::paintEvent(QPaintEvent* event) {
 
 void MainWindow::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
+        if (minimizeButtonRect().contains(event->position().toPoint())) {
+            minimizeRequested();
+            event->accept();
+            return;
+        }
         if (windowHandle() != nullptr) {
             windowHandle()->startSystemMove();
             event->accept();
@@ -472,10 +790,29 @@ void MainWindow::contextMenuEvent(QContextMenuEvent* event) {
     event->accept();
 }
 
+void MainWindow::keyPressEvent(QKeyEvent* event) {
+    if (event->key() == Qt::Key_Menu ||
+        (event->key() == Qt::Key_F10 && event->modifiers().testFlag(Qt::ShiftModifier))) {
+        contextMenu_.popup(mapToGlobal(QPoint(6, TitleHeight)));
+        for (QAction* action : contextMenu_.actions()) {
+            if (action->isEnabled() && !action->isSeparator()) {
+                contextMenu_.setActiveAction(action);
+                break;
+            }
+        }
+        event->accept();
+        return;
+    }
+    QWidget::keyPressEvent(event);
+}
+
 void MainWindow::closeEvent(QCloseEvent* event) {
     if (persistenceEnabled_) {
-        saveTotals();
-        saveConfig();
+        const bool wasShuttingDown = shuttingDown_;
+        shuttingDown_ = true;
+        saveTotals(false);
+        saveConfig(false);
+        shuttingDown_ = wasShuttingDown;
     }
     QWidget::closeEvent(event);
 }

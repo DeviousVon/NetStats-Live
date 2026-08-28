@@ -92,11 +92,13 @@ private:
     QTimer simulationTimer_;
     QElapsedTimer elapsed_;
     CollectorSnapshot snapshot_;
-    std::optional<NetworkCounters> previousCounters_;
+    std::vector<NetworkCounters> previousCounters_;
     std::optional<CpuTimes> previousCpu_;
     QElapsedTimer pingElapsed_;
     QProcess pingProcess_;
     QProcess tracerouteProcess_;
+    QTimer pingTimeout_;
+    QTimer tracerouteTimeout_;
     std::deque<double> pingSamples_;
     QElapsedTimer activityElapsed_;
     bool hasActivity_ = false;

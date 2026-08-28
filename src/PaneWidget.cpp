@@ -18,6 +18,7 @@ PaneWidget::PaneWidget(QString title, int preferredHeight, QWidget* parent)
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAttribute(Qt::WA_TransparentForMouseEvents);
+    setAccessibleName(title_);
 }
 
 int PaneWidget::preferredHeight() const {
@@ -26,6 +27,7 @@ int PaneWidget::preferredHeight() const {
 
 void PaneWidget::setPaneTitle(const QString& title) {
     title_ = title;
+    setAccessibleName(title_);
     update();
 }
 

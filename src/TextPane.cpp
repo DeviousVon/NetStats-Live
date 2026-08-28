@@ -4,6 +4,7 @@
 #include "TextPane.h"
 
 #include <QPainter>
+#include <QStringList>
 #include <utility>
 
 namespace nsl {
@@ -31,12 +32,22 @@ TextPane::TextPane(QString title, int preferredHeight, QWidget* parent)
 void TextPane::setRows(const QVector<QPair<QString, QString>>& rows) {
     rows_ = rows;
     columns_.clear();
+    QStringList description;
+    for (const auto& row : rows_) {
+        description.append(QStringLiteral("%1: %2").arg(row.first, row.second));
+    }
+    setAccessibleDescription(description.join(QStringLiteral("; ")));
     update();
 }
 
 void TextPane::setColumns(const QVector<QPair<QString, QString>>& columns) {
     columns_ = columns;
     rows_.clear();
+    QStringList description;
+    for (const auto& column : columns_) {
+        description.append(QStringLiteral("%1: %2").arg(column.first, column.second));
+    }
+    setAccessibleDescription(description.join(QStringLiteral("; ")));
     update();
 }
 

@@ -10,6 +10,7 @@
 #include <QHostInfo>
 #include <QNetworkAddressEntry>
 #include <QNetworkInterface>
+#include <QProcessEnvironment>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTextStream>
@@ -38,9 +39,9 @@ QString cleanTarget(QString target) {
     target = target.trimmed();
     if (target.startsWith(QStringLiteral("http://")) || target.startsWith(QStringLiteral("https://"))) {
         const QUrl url(target);
-        return url.host().isEmpty() ? target : url.host();
+        target = url.host();
     }
-    return target;
+    return isSafeProbeTarget(target.toUtf8().toStdString()) ? target : QString();
 }
 
 } // namespace
@@ -53,11 +54,51 @@ Collector::Collector(QObject* parent)
     connect(&simulationTimer_, &QTimer::timeout, this, &Collector::simulationTick);
     connect(&pingProcess_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, &Collector::pingFinished);
     connect(&tracerouteProcess_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, &Collector::tracerouteFinished);
+
+    QProcessEnvironment probeEnvironment = QProcessEnvironment::systemEnvironment();
+    probeEnvironment.insert(QStringLiteral("LC_ALL"), QStringLiteral("C"));
+    probeEnvironment.insert(QStringLiteral("LANG"), QStringLiteral("C"));
+    pingProcess_.setProcessEnvironment(probeEnvironment);
+    tracerouteProcess_.setProcessEnvironment(probeEnvironment);
+
+    pingTimeout_.setSingleShot(true);
+    pingTimeout_.setInterval(3000);
+    connect(&pingTimeout_, &QTimer::timeout, this, [this]() {
+        if (pingProcess_.state() != QProcess::NotRunning) {
+            snapshot_.pingValid = false;
+            pingProcess_.kill();
+            Q_EMIT updated(snapshot_);
+        }
+    });
+    tracerouteTimeout_.setSingleShot(true);
+    tracerouteTimeout_.setInterval(35000);
+    connect(&tracerouteTimeout_, &QTimer::timeout, this, [this]() {
+        if (tracerouteProcess_.state() != QProcess::NotRunning) {
+            snapshot_.hopValid = false;
+            snapshot_.hopCount = 0;
+            tracerouteProcess_.kill();
+            Q_EMIT updated(snapshot_);
+        }
+    });
+
+    connect(&pingProcess_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+        pingTimeout_.stop();
+        snapshot_.pingValid = false;
+        Q_EMIT updated(snapshot_);
+    });
+    connect(&tracerouteProcess_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+        tracerouteTimeout_.stop();
+        snapshot_.hopValid = false;
+        snapshot_.hopCount = 0;
+        Q_EMIT updated(snapshot_);
+    });
 }
 
 Collector::~Collector() {
     tickTimer_.stop();
     simulationTimer_.stop();
+    pingTimeout_.stop();
+    tracerouteTimeout_.stop();
     disconnect(&pingProcess_, nullptr, this, nullptr);
     disconnect(&tracerouteProcess_, nullptr, this, nullptr);
     stopProcess(pingProcess_);
@@ -75,6 +116,7 @@ void Collector::start(const QString& selectedInterface,
     snapshot_.rxMonth = rxMonth;
     snapshot_.txMonth = txMonth;
     snapshot_.remoteTarget = cleanTarget(remoteTarget);
+    previousCounters_.clear();
     if (snapshot_.remoteTarget.isEmpty()) {
         snapshot_.remoteTarget = defaultGateway();
     }
@@ -90,7 +132,7 @@ void Collector::start(const QString& selectedInterface,
 
 void Collector::setSelectedInterface(const QString& selectedInterface) {
     snapshot_.selectedInterface = selectedInterface.isEmpty() ? QStringLiteral("ALL") : selectedInterface;
-    previousCounters_.reset();
+    previousCounters_.clear();
     refreshLocalInfo();
     Q_EMIT updated(snapshot_);
 }
@@ -117,7 +159,7 @@ void Collector::setRemoteTarget(const QString& target) {
 void Collector::resetSessionTotals() {
     snapshot_.rxSession = 0;
     snapshot_.txSession = 0;
-    previousCounters_.reset();
+    previousCounters_.clear();
     Q_EMIT updated(snapshot_);
 }
 
@@ -125,7 +167,7 @@ void Collector::startSimulation(const QString& monthKey, std::uint64_t rxMonth, 
     tickTimer_.stop();
     stopProcess(pingProcess_);
     stopProcess(tracerouteProcess_);
-    previousCounters_.reset();
+    previousCounters_.clear();
     previousCpu_.reset();
     pingSamples_.clear();
     hasActivity_ = true;
@@ -171,31 +213,37 @@ void Collector::simulationTick() {
 void Collector::refreshNetwork(double elapsedSeconds) {
     const QString text = readTextFile(QStringLiteral("/proc/net/dev"));
     const auto counters = parseProcNetDev(text.toStdString());
+    if (counters.empty()) {
+        previousCounters_.clear();
+        snapshot_.rxDelta = 0;
+        snapshot_.txDelta = 0;
+        snapshot_.rxRate = 0.0;
+        snapshot_.txRate = 0.0;
+        return;
+    }
+
     snapshot_.interfaces = interfaceNames(counters);
     if (snapshot_.selectedInterface != QStringLiteral("ALL") && !snapshot_.interfaces.contains(snapshot_.selectedInterface)) {
         snapshot_.selectedInterface = QStringLiteral("ALL");
-        previousCounters_.reset();
+        previousCounters_.clear();
         Q_EMIT interfaceFallbackToAll();
     }
 
-    const auto selected = selectNetworkCounters(counters, snapshot_.selectedInterface.toStdString());
-    std::uint64_t rxDelta = 0;
-    std::uint64_t txDelta = 0;
-    if (previousCounters_.has_value()) {
-        rxDelta = nonNegativeDelta(previousCounters_->rxBytes, selected.rxBytes);
-        txDelta = nonNegativeDelta(previousCounters_->txBytes, selected.txBytes);
+    NetworkCounterDelta delta;
+    if (!previousCounters_.empty()) {
+        delta = networkCounterDelta(previousCounters_, counters, snapshot_.selectedInterface.toStdString());
     }
-    previousCounters_ = selected;
+    previousCounters_ = counters;
 
-    snapshot_.rxDelta = rxDelta;
-    snapshot_.txDelta = txDelta;
-    snapshot_.rxRate = static_cast<double>(rxDelta) / elapsedSeconds;
-    snapshot_.txRate = static_cast<double>(txDelta) / elapsedSeconds;
-    snapshot_.rxSession += rxDelta;
-    snapshot_.txSession += txDelta;
-    snapshot_.rxMonth += rxDelta;
-    snapshot_.txMonth += txDelta;
-    if (rxDelta > 0 || txDelta > 0) {
+    snapshot_.rxDelta = delta.rxBytes;
+    snapshot_.txDelta = delta.txBytes;
+    snapshot_.rxRate = static_cast<double>(delta.rxBytes) / elapsedSeconds;
+    snapshot_.txRate = static_cast<double>(delta.txBytes) / elapsedSeconds;
+    snapshot_.rxSession += delta.rxBytes;
+    snapshot_.txSession += delta.txBytes;
+    snapshot_.rxMonth += delta.rxBytes;
+    snapshot_.txMonth += delta.txBytes;
+    if (delta.rxBytes > 0 || delta.txBytes > 0) {
         hasActivity_ = true;
         activityElapsed_.restart();
     }
@@ -242,7 +290,9 @@ void Collector::maybeStartPing() {
         return;
     }
     pingElapsed_.restart();
-    pingProcess_.start(ping, {QStringLiteral("-c"), QStringLiteral("1"), QStringLiteral("-W"), QStringLiteral("2"), snapshot_.remoteTarget});
+    pingProcess_.start(ping, {QStringLiteral("-c"), QStringLiteral("1"), QStringLiteral("-W"), QStringLiteral("2"),
+                              QStringLiteral("--"), snapshot_.remoteTarget});
+    pingTimeout_.start();
 }
 
 void Collector::startTraceroute() {
@@ -256,7 +306,10 @@ void Collector::startTraceroute() {
         snapshot_.hopCount = 0;
         return;
     }
-    tracerouteProcess_.start(traceroute, {QStringLiteral("-n"), QStringLiteral("-m"), QStringLiteral("30"), QStringLiteral("-q"), QStringLiteral("1"), snapshot_.remoteTarget});
+    tracerouteProcess_.start(traceroute, {QStringLiteral("-n"), QStringLiteral("-m"), QStringLiteral("30"),
+                                          QStringLiteral("-q"), QStringLiteral("1"), QStringLiteral("-w"),
+                                          QStringLiteral("1"), QStringLiteral("--"), snapshot_.remoteTarget});
+    tracerouteTimeout_.start();
 }
 
 void Collector::stopProcess(QProcess& process) {
@@ -271,7 +324,9 @@ void Collector::stopProcess(QProcess& process) {
 }
 
 void Collector::pingFinished(int exitCode, QProcess::ExitStatus status) {
+    pingTimeout_.stop();
     const QString output = QString::fromLocal8Bit(pingProcess_.readAllStandardOutput()) + QString::fromLocal8Bit(pingProcess_.readAllStandardError());
+    snapshot_.pingValid = false;
     if (status == QProcess::NormalExit && exitCode == 0) {
         const QRegularExpression re(QStringLiteral("time=([0-9]+(?:\\.[0-9]+)?)\\s*ms"));
         const auto match = re.match(output);
@@ -289,6 +344,7 @@ void Collector::pingFinished(int exitCode, QProcess::ExitStatus status) {
 }
 
 void Collector::tracerouteFinished(int exitCode, QProcess::ExitStatus status) {
+    tracerouteTimeout_.stop();
     Q_UNUSED(exitCode)
     const QString output = QString::fromLocal8Bit(tracerouteProcess_.readAllStandardOutput()) + QString::fromLocal8Bit(tracerouteProcess_.readAllStandardError());
     const int hops = status == QProcess::NormalExit ? parseTracerouteHopCount(output.toStdString()) : 0;

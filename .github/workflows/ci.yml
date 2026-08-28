@@ -6,96 +6,153 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test-kde:
-    name: KDE/layer-shell build and tests
+  hygiene:
+    name: Metadata and shell hygiene
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake \
-            qt6-base-dev qmake6 qmake6-bin \
-            libqt6dbus6 libqt6network6 libqt6widgets6 \
-            liblayershellqtinterface-dev \
-            iputils-ping traceroute
-      - name: Configure
-        run: cmake -S . -B build-kde -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=ON
-      - name: Build
-        run: cmake --build build-kde -j"$(nproc)"
-      - name: Test
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: ctest --test-dir build-kde --output-on-failure
-
-  build-test-generic:
-    name: Generic no-layer-shell build and tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake \
-            qt6-base-dev qmake6 qmake6-bin \
-            libqt6dbus6 libqt6network6 libqt6widgets6 \
-            iputils-ping traceroute
-      - name: Configure
-        run: cmake -S . -B build-generic -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=OFF
-      - name: Build
-        run: cmake --build build-generic -j"$(nproc)"
-      - name: Test
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: ctest --test-dir build-generic --output-on-failure
-
-  package-smoke:
-    name: Debian package smoke test
-    runs-on: ubuntu-24.04
-    needs: [build-test-kde, build-test-generic]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake \
-            qt6-base-dev qmake6 qmake6-bin \
-            libqt6dbus6 libqt6network6 libqt6widgets6 \
-            liblayershellqtinterface-dev \
-            iputils-ping traceroute
-      - name: Build KDE package
-        run: |
-          cmake -S . -B build-kde -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=ON
-          cmake --build build-kde -j"$(nproc)"
-          cpack --config build-kde/CPackConfig.cmake -G DEB
-      - name: Build generic package
-        run: |
-          cmake -S . -B build-generic -DCMAKE_BUILD_TYPE=Release -DUSE_LAYER_SHELL=OFF
-          cmake --build build-generic -j"$(nproc)"
-          cpack --config build-generic/CPackConfig.cmake -G DEB
-      - name: Smoke-test packages
-        run: |
-          test -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
-          test -f outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
-          sudo dpkg --dry-run --auto-deconfigure -i outputs/final/NetStats-Live_0.1.0_kde_amd64.deb
-          sudo dpkg --dry-run --auto-deconfigure -i outputs/final/NetStats-Live_0.1.0_generic_amd64.deb
-          test "$(dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Package)" = "netstats-live"
-          dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Breaks | grep -F 'nsl-linux (<< 0.2.0)'
-          dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Conflicts | grep -F 'nsl-linux (<< 0.2.0)'
-          dpkg-deb -f outputs/final/NetStats-Live_0.1.0_kde_amd64.deb Replaces | grep -F 'nsl-linux (<< 0.2.0)'
-          dpkg-deb -c outputs/final/NetStats-Live_0.1.0_kde_amd64.deb | grep -F './usr/bin/netstats-live'
-          dpkg-deb -c outputs/final/NetStats-Live_0.1.0_kde_amd64.deb | grep -F './usr/share/applications/netstats-live.desktop'
-          dpkg-deb -c outputs/final/NetStats-Live_0.1.0_kde_amd64.deb | grep -F './usr/share/icons/hicolor/64x64/apps/netstats-live.png'
-          ! dpkg-deb -c outputs/final/NetStats-Live_0.1.0_kde_amd64.deb | grep -F 'nsl-linux'
-          dpkg-deb -c outputs/final/NetStats-Live_0.1.0_generic_amd64.deb | grep -F './usr/bin/netstats-live'
-          dpkg-deb -c outputs/final/NetStats-Live_0.1.0_generic_amd64.deb | grep -F './usr/share/applications/netstats-live.desktop'
-          ! dpkg-deb -c outputs/final/NetStats-Live_0.1.0_generic_amd64.deb | grep -F 'nsl-linux'
-      - name: Upload package artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          name: debian-packages
-          path: outputs/final/NetStats-Live_0.1.0_*_amd64.deb
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends appstream desktop-file-utils shellcheck
+      - name: Validate metadata and package script
+        run: |
+          shellcheck scripts/build-debs.sh
+          desktop-file-validate config/netstats-live.desktop
+          appstreamcli validate --pedantic config/netstats-live.metainfo.xml
+          scripts/build-debs.sh --help
+      - name: Reject output ancestor symlinks without deleting external data
+        run: |
+          root=$(mktemp -d)
+          victim=$(mktemp -d)
+          mkdir -p "$root/scripts" "$victim/escape"
+          cp scripts/build-debs.sh "$root/scripts/build-debs.sh"
+          chmod 0755 "$root/scripts/build-debs.sh"
+          ln -s "$victim" "$root/outputs"
+          printf 'preserve me\n' > "$victim/escape/sentinel"
+          ! SOURCE_DATE_EPOCH=1787545922 "$root/scripts/build-debs.sh" \
+            --output outputs/escape --validate-output-only
+          test -f "$victim/escape/sentinel"
+          rm -rf "$root" "$victim"
+
+  ubuntu-22-generic:
+    name: Ubuntu 22.04 generic and reproducible DEB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, verify, install, launch, and remove
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src -e NSL_BUILD_JOBS=2 \
+            -e SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)" ubuntu:22.04 bash -lc '
+            set -euo pipefail; export DEBIAN_FRONTEND=noninteractive;
+            apt-get update -qq;
+            apt-get install -y -qq build-essential cmake qt6-base-dev qmake6 qmake6-bin \
+              libgl-dev libopengl-dev dpkg-dev binutils python3 git appstream \
+              desktop-file-utils lintian iputils-ping traceroute;
+            scripts/build-debs.sh --flavor generic --reproducible;
+            package=$(python3 -c "from pathlib import Path; p=list(Path(\"outputs/release/packages\").glob(\"*.deb\")); assert len(p)==1; print(p[0])");
+            apt-get install -y "./$package";
+            QT_QPA_PLATFORM=offscreen netstats-live --help >/dev/null;
+            apt-get remove -y netstats-live;
+            test ! -e /usr/bin/netstats-live'
+
+  ubuntu-24-generic:
+    name: Ubuntu 24.04 Qt5 rejection and generic DEB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Reject Qt5 LayerShellQt and verify generic package
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src -e NSL_BUILD_JOBS=2 \
+            -e SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)" ubuntu:24.04 bash -lc '
+            set -euo pipefail; export DEBIAN_FRONTEND=noninteractive;
+            apt-get update -qq;
+            apt-get install -y -qq build-essential cmake qt6-base-dev qmake6 qmake6-bin \
+              liblayershellqtinterface-dev dpkg-dev binutils python3 git appstream \
+              desktop-file-utils lintian iputils-ping traceroute;
+            cmake -S . -B outputs/qt5-rejection -DCMAKE_BUILD_TYPE=Release \
+              -DUSE_LAYER_SHELL=ON -DUSE_KWINDOWSYSTEM=OFF;
+            python3 -c "import json; d=json.load(open(\"outputs/qt5-rejection/nsl-build-features.json\")); assert d=={\"package_flavor\":\"generic\",\"layer_shell_qt6\":False,\"kf6_window_system\":False},d";
+            cmake --build outputs/qt5-rejection --parallel 2;
+            python3 -c "import subprocess; s=subprocess.check_output([\"readelf\",\"-d\",\"outputs/qt5-rejection/netstats-live\"],text=True); assert \"Qt5\" not in s and \"LayerShellQtInterface.so.5\" not in s";
+            scripts/build-debs.sh --flavor generic --reproducible'
+
+  debian-12-generic:
+    name: Debian 12 generic and reproducible DEB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and verify on Debian 12
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src -e NSL_BUILD_JOBS=2 \
+            -e SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)" debian:12 bash -lc '
+            set -euo pipefail; export DEBIAN_FRONTEND=noninteractive;
+            apt-get update -qq;
+            apt-get install -y -qq build-essential cmake qt6-base-dev qmake6 qmake6-bin \
+              libgl-dev libopengl-dev dpkg-dev binutils python3 git appstream \
+              desktop-file-utils lintian iputils-ping traceroute;
+            scripts/build-debs.sh --flavor generic --reproducible'
+
+  ubuntu-26-kde:
+    name: Ubuntu 26.04 genuine Qt6 KDE and reproducible DEB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and verify genuine KDE features
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src -e NSL_BUILD_JOBS=2 \
+            -e SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)" ubuntu:26.04 bash -lc '
+            set -euo pipefail; export DEBIAN_FRONTEND=noninteractive;
+            apt-get update -qq;
+            apt-get install -y -qq build-essential cmake qt6-base-dev qmake6 qmake6-bin \
+              liblayershellqtinterface-dev libkf6windowsystem-dev qt6-wayland-dev \
+              dpkg-dev binutils python3 git appstream desktop-file-utils lintian \
+              iputils-ping traceroute;
+            scripts/build-debs.sh --flavor kde --reproducible'
+
+  sanitizers:
+    name: ASan and UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake qt6-base-dev qmake6 qmake6-bin iputils-ping traceroute
+      - name: Configure, build, and test with sanitizers
+        run: |
+          cmake -S . -B build-sanitize -DCMAKE_BUILD_TYPE=Debug \
+            -DUSE_LAYER_SHELL=OFF -DUSE_KWINDOWSYSTEM=OFF \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-sanitize --parallel 2
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+          UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+          QT_QPA_PLATFORM=offscreen \
+            ctest --test-dir build-sanitize --output-on-failure
