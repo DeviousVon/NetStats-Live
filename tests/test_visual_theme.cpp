@@ -19,6 +19,7 @@
 #include <QString>
 #include <QTemporaryDir>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -48,6 +49,21 @@ bool nearColor(const QColor& color, const QColor& target, int tolerance) {
            std::abs(color.blue() - target.blue()) <= tolerance;
 }
 
+double relativeLuminance(const QColor& color) {
+    const auto linear = [](double component) {
+        component /= 255.0;
+        return component <= 0.04045 ? component / 12.92 : std::pow((component + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * linear(color.red()) + 0.7152 * linear(color.green()) + 0.0722 * linear(color.blue());
+}
+
+double contrastRatio(const QColor& first, const QColor& second) {
+    const double firstLuminance = relativeLuminance(first);
+    const double secondLuminance = relativeLuminance(second);
+    return (std::max(firstLuminance, secondLuminance) + 0.05) /
+           (std::min(firstLuminance, secondLuminance) + 0.05);
+}
+
 int countNear(const QImage& image, const QColor& target, int tolerance, QRect bounds = {}) {
     if (bounds.isNull()) {
         bounds = image.rect();
@@ -68,6 +84,23 @@ QImage renderWidget(QWidget& widget) {
     image.fill(Qt::transparent);
     widget.render(&image);
     return image;
+}
+
+bool writeText(const QString& path, const QString& content) {
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+    return file.write(content.toUtf8()) == content.toUtf8().size() && file.flush();
+}
+
+QString readAll(const QString& path) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return {};
+    }
+    return QString::fromUtf8(file.readAll());
 }
 
 QImage renderGraphPane(const QString& title, nsl::GraphValueMode mode, const std::vector<double>& samples) {
@@ -130,6 +163,23 @@ int main(int argc, char** argv) {
     expectEqual(Theme::HeaderText, Theme::GraphFill, "section headers use graph cyan");
     expectEqual(PaneWidget::valueColor(), Theme::ValueText, "PaneWidget value color comes from Theme");
     expectEqual(PaneWidget::dimColor(), Theme::LabelText, "PaneWidget dim label color comes from Theme");
+    expectTrue(contrastRatio(Theme::AverageLine, Theme::Background) >= 3.0,
+               "average reference line has 3:1 contrast against the graph background");
+    expectTrue(contrastRatio(Theme::AverageLine, Theme::GraphFill) >= 3.0,
+               "average reference line has 3:1 contrast where it crosses graph fill");
+
+    const QFont headerFont = Theme::headerFont();
+    const QFont labelFont = Theme::labelFont();
+    const QFont valueFont = Theme::valueFont();
+    const QFont graphValueFont = Theme::graphValueFont();
+    expectEqual(headerFont.pixelSize(), 12, "header font uses fixed pixels instead of screen-dependent points");
+    expectEqual(labelFont.pixelSize(), 12, "label font uses fixed pixels instead of screen-dependent points");
+    expectEqual(valueFont.pixelSize(), 12, "value font uses fixed pixels instead of screen-dependent points");
+    expectEqual(graphValueFont.pixelSize(), 17, "graph value font uses fixed pixels instead of screen-dependent points");
+    expectEqual(headerFont.weight(), QFont::Normal, "header font keeps the regular face");
+    expectEqual(labelFont.weight(), QFont::Normal, "label font keeps the regular face");
+    expectEqual(valueFont.weight(), QFont::Normal, "value font does not substitute a bold face");
+    expectEqual(graphValueFont.weight(), QFont::Normal, "graph value font does not substitute a bold face");
 
     const auto labels = graphMetricLabels();
     expectEqual(labels[0], QStringLiteral("Current"), "first graph label is spelled out");
@@ -144,6 +194,11 @@ int main(int argc, char** argv) {
     graph.pushSample(1024.0 * 18.0);
     graph.pushSample(1024.0 * 4.0);
     graph.pushSample(0.0);
+    expectEqual(graph.accessibleName(), QStringLiteral("Incoming"), "graph pane exposes its title to assistive technology");
+    expectTrue(graph.accessibleDescription().contains(QStringLiteral("Current")) &&
+                   graph.accessibleDescription().contains(QStringLiteral("Average")) &&
+                   graph.accessibleDescription().contains(QStringLiteral("Maximum")),
+               "graph pane exposes current, average, and maximum values to assistive technology");
     const QImage graphImage = renderWidget(graph);
     expectTrue(countNear(graphImage, Theme::GraphFill, 16) >= 30, "rendered graph contains cyan filled area/header rule pixels");
     expectEqual(countNear(graphImage, QColor(0x00, 0xe0, 0x00), 8), 0, "rendered graph contains no legacy bright green pixels");
@@ -204,6 +259,53 @@ int main(int argc, char** argv) {
     expectTrue(QFile::exists(screenshotPath), "screenshot mode writes PNG");
     const QString screenshotStderr = QString::fromUtf8(screenshotProcess.readAllStandardError());
     expectTrue(!screenshotStderr.contains(QStringLiteral("traceroute"), Qt::CaseInsensitive), "screenshot mode does not start live traceroute collector");
+    const QImage screenshot(screenshotPath);
+    expectEqual(screenshot.size(), QSize(238, 523), "clean screenshot has deterministic compact dimensions");
+    const QString cleanConfigPath = QDir(screenshotDir.path()).filePath(QStringLiteral("netstats-live/netstats-live.conf"));
+    expectTrue(!QFile::exists(cleanConfigPath), "screenshot mode does not create user config");
+    const QRect minimizeButtonBounds(screenshot.width() - 18, 1, 16, 16);
+    expectTrue(countNear(screenshot, Theme::HeaderText, 8, minimizeButtonBounds) >= 6,
+               "title strip visibly renders the cyan minimize control");
+
+    QTemporaryDir customScreenshotDir;
+    const QString customConfigPath = QDir(customScreenshotDir.path()).filePath(QStringLiteral("netstats-live/netstats-live.conf"));
+    const QString customConfig = QStringLiteral(
+        "[config]\n"
+        "alwaysOnTop=true\n"
+        "unitMode=bits\n"
+        "[panes]\n"
+        "localMachine=false\n"
+        "remoteMachine=false\n"
+        "incomingTotals=false\n"
+        "incoming=false\n"
+        "outgoingTotals=false\n"
+        "outgoing=false\n"
+        "threads=true\n"
+        "cpu=false\n");
+    const QString legacyAutostartPath = QDir(customScreenshotDir.path()).filePath(QStringLiteral("autostart/nsl-linux.desktop"));
+    const QString legacyAutostart = QStringLiteral("[Desktop Entry]\nType=Application\nName=NSL-Linux\nExec=nsl-linux --minimized\n");
+    expectTrue(writeText(customConfigPath, customConfig), "custom screenshot config fixture written");
+    expectTrue(writeText(legacyAutostartPath, legacyAutostart), "legacy autostart fixture written");
+
+    QProcess customScreenshotProcess;
+    QProcessEnvironment customScreenshotEnv = QProcessEnvironment::systemEnvironment();
+    customScreenshotEnv.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
+    customScreenshotEnv.insert(QStringLiteral("XDG_CONFIG_HOME"), customScreenshotDir.path());
+    customScreenshotEnv.insert(QStringLiteral("DBUS_SESSION_BUS_ADDRESS"), QStringLiteral("unix:path=%1/no-session-bus").arg(customScreenshotDir.path()));
+    customScreenshotProcess.setProcessEnvironment(customScreenshotEnv);
+    const QString customScreenshotPath = QDir(customScreenshotDir.path()).filePath(QStringLiteral("visual.png"));
+    customScreenshotProcess.setProgram(binaryPath);
+    customScreenshotProcess.setArguments({QStringLiteral("--screenshot"), customScreenshotPath});
+    customScreenshotProcess.start();
+    expectTrue(customScreenshotProcess.waitForFinished(10000), "custom-config screenshot mode exits promptly");
+    expectEqual(customScreenshotProcess.exitCode(), 0, "custom-config screenshot mode exits cleanly");
+    const QImage customScreenshot(customScreenshotPath);
+    expectEqual(customScreenshot.size(), QSize(238, 523), "disabled panes cannot collapse screenshot width");
+    expectEqual(customScreenshot, screenshot, "screenshot output is independent of user settings");
+    expectEqual(readAll(customConfigPath), customConfig, "screenshot mode leaves existing config byte-identical");
+    expectEqual(readAll(legacyAutostartPath), legacyAutostart, "screenshot mode does not migrate legacy autostart");
+    expectTrue(!QFile::exists(QDir(customScreenshotDir.path()).filePath(QStringLiteral("autostart/netstats-live.desktop"))),
+               "screenshot mode creates no replacement autostart entry");
 
     if (qEnvironmentVariableIsSet("NSL_DYNAMIC_SCALE_REPORT")) {
         writeDynamicScaleReport(QString::fromLocal8Bit(qgetenv("NSL_DYNAMIC_SCALE_REPORT")));

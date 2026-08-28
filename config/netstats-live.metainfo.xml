@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.deviousvon.netstats-live</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>NetStats-Live</name>
+  <summary>Compact live network throughput and CPU monitor</summary>
+  <description>
+    <p>
+      NetStats-Live is a compact Qt 6 desktop monitor for Linux. It displays
+      incoming and outgoing traffic, transfer totals, remote reachability,
+      thread count, and CPU activity in an always-available vertical panel.
+    </p>
+    <p>
+      It supports generic Linux desktop builds and optional KDE Plasma
+      integration for layer-shell placement, native window activation, tray
+      access, and Klipper clipboard capture.
+    </p>
+  </description>
+  <launchable type="desktop-id">netstats-live.desktop</launchable>
+  <provides>
+    <binary>netstats-live</binary>
+  </provides>
+  <developer_name>DeviousVon</developer_name>
+  <url type="homepage">https://github.com/DeviousVon/NetStats-Live</url>
+  <url type="bugtracker">https://github.com/DeviousVon/NetStats-Live/issues</url>
+
+  <url type="help">https://github.com/DeviousVon/NetStats-Live#readme</url>
+  <icon type="stock">netstats-live</icon>
+  <categories>
+    <category>Network</category>
+    <category>Monitor</category>
+  </categories>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/DeviousVon/NetStats-Live/main/docs/netstats-live-screenshot.png</image>
+      <caption>NetStats-Live monitoring local and remote network activity</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.1.0" date="2026-07-09" type="development">
+      <description>
+        <p>First public alpha release.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>

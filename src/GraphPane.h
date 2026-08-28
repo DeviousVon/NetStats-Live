@@ -45,6 +45,7 @@ protected:
 private:
     QString formatValue(double value) const;
     double average() const;
+    void updateAccessibleDescription();
 
     GraphValueMode mode_;
     UnitMode unitMode_ = UnitMode::Bytes;

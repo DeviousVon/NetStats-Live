@@ -33,6 +33,15 @@ std::uint64_t parseU64(std::string_view value) {
     return result;
 }
 
+std::optional<std::uint64_t> parseUnsignedExact(std::string_view value, int base = 10) {
+    std::uint64_t result = 0;
+    const auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), result, base);
+    if (ec != std::errc{} || ptr != value.data() + value.size()) {
+        return std::nullopt;
+    }
+    return result;
+}
+
 std::string formatScaled(double value, const char* unit, bool integerOnly) {
     std::ostringstream out;
     if (integerOnly) {
@@ -45,8 +54,10 @@ std::string formatScaled(double value, const char* unit, bool integerOnly) {
 }
 
 std::uint64_t totalCpuTicks(const CpuTimes& value) {
+    // Linux reports guest and guest_nice as subsets of user and nice. Adding
+    // them again inflates both total and busy deltas on virtualization hosts.
     return value.user + value.nice + value.system + value.idle + value.iowait + value.irq +
-           value.softirq + value.steal + value.guest + value.guestNice;
+           value.softirq + value.steal;
 }
 
 std::uint64_t idleCpuTicks(const CpuTimes& value) {
@@ -66,7 +77,11 @@ std::string formatRate(double bytesPerSecond, UnitMode mode) {
         if (value < 1024.0) {
             return formatScaled(value, "Kb", false);
         }
-        return formatScaled(value / 1024.0, "Mb", false);
+        value /= 1024.0;
+        if (value < 1024.0) {
+            return formatScaled(value, "Mb", false);
+        }
+        return formatScaled(value / 1024.0, "Gb", false);
     }
 
     if (value < 1024.0) {
@@ -76,7 +91,11 @@ std::string formatRate(double bytesPerSecond, UnitMode mode) {
     if (value < 1024.0) {
         return formatScaled(value, "KB", false);
     }
-    return formatScaled(value / 1024.0, "MB", false);
+    value /= 1024.0;
+    if (value < 1024.0) {
+        return formatScaled(value, "MB", false);
+    }
+    return formatScaled(value / 1024.0, "GB", false);
 }
 
 std::vector<NetworkCounters> parseProcNetDev(const std::string& text) {
@@ -145,6 +164,27 @@ std::uint64_t nonNegativeDelta(std::uint64_t previous, std::uint64_t current) {
         return 0;
     }
     return current - previous;
+}
+
+NetworkCounterDelta networkCounterDelta(const std::vector<NetworkCounters>& previous,
+                                        const std::vector<NetworkCounters>& current,
+                                        const std::string& selectedInterface) {
+    NetworkCounterDelta delta;
+    const bool allInterfaces = selectedInterface.empty() || selectedInterface == "ALL";
+    for (const auto& currentCounter : current) {
+        if (currentCounter.name == "lo" || (!allInterfaces && currentCounter.name != selectedInterface)) {
+            continue;
+        }
+        const auto previousCounter = std::find_if(previous.begin(), previous.end(), [&](const NetworkCounters& candidate) {
+            return candidate.name == currentCounter.name;
+        });
+        if (previousCounter == previous.end()) {
+            continue;
+        }
+        delta.rxBytes += nonNegativeDelta(previousCounter->rxBytes, currentCounter.rxBytes);
+        delta.txBytes += nonNegativeDelta(previousCounter->txBytes, currentCounter.txBytes);
+    }
+    return delta;
 }
 
 std::optional<CpuTimes> parseProcStatCpuLine(const std::string& text) {
@@ -217,6 +257,7 @@ std::string parseDefaultGatewayHex(const std::string& routeText) {
     std::istringstream input(routeText);
     std::string line;
     bool header = true;
+    std::optional<std::pair<std::uint64_t, std::uint64_t>> selected;
     while (std::getline(input, line)) {
         if (header) {
             header = false;
@@ -226,21 +267,48 @@ std::string parseDefaultGatewayHex(const std::string& routeText) {
         std::string iface;
         std::string destination;
         std::string gateway;
-        row >> iface >> destination >> gateway;
-        if (destination != "00000000" || gateway.size() != 8) {
+        std::string flagsText;
+        std::string refCount;
+        std::string use;
+        std::string metricText;
+        std::string mask;
+        row >> iface >> destination >> gateway >> flagsText >> refCount >> use >> metricText >> mask;
+        if (row.fail() || destination != "00000000" || mask != "00000000" || gateway.size() != 8) {
             continue;
         }
-        unsigned long raw = 0;
-        try {
-            raw = std::stoul(gateway, nullptr, 16);
-        } catch (...) {
+
+        const auto flags = parseUnsignedExact(flagsText, 16);
+        const auto metric = parseUnsignedExact(metricText);
+        const auto raw = parseUnsignedExact(gateway, 16);
+        constexpr std::uint64_t RouteUp = 0x1;
+        constexpr std::uint64_t RouteGateway = 0x2;
+        if (!flags.has_value() || !metric.has_value() || !raw.has_value() || *raw == 0 ||
+            (*flags & (RouteUp | RouteGateway)) != (RouteUp | RouteGateway)) {
             continue;
         }
+
+        if (!selected.has_value() || *metric < selected->first) {
+            selected = std::pair{*metric, *raw};
+        }
+    }
+
+    if (selected.has_value()) {
+        const std::uint64_t raw = selected->second;
         std::ostringstream out;
-        out << (raw & 0xffUL) << '.' << ((raw >> 8) & 0xffUL) << '.' << ((raw >> 16) & 0xffUL) << '.' << ((raw >> 24) & 0xffUL);
+        out << (raw & 0xffU) << '.' << ((raw >> 8) & 0xffU) << '.' << ((raw >> 16) & 0xffU) << '.' << ((raw >> 24) & 0xffU);
         return out.str();
     }
     return {};
+}
+
+bool isSafeProbeTarget(std::string_view target) {
+    constexpr std::size_t MaximumTargetBytes = 255;
+    if (target.empty() || target.size() > MaximumTargetBytes || target.front() == '-') {
+        return false;
+    }
+    return std::none_of(target.begin(), target.end(), [](unsigned char character) {
+        return character <= 0x20 || character == 0x7f;
+    });
 }
 
 } // namespace nsl
